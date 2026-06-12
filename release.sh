@@ -5,10 +5,18 @@ set -e
 
 # Load .env file
 if [ -f .env ]; then
-  export $(grep -v '^#' .env | xargs)
+  set -a
+  source .env
+  set +a
 fi
 
 # Pre-checks
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+if [ "$CURRENT_BRANCH" != "main" ]; then
+  echo "Error: Must be on 'main' branch to release (current: $CURRENT_BRANCH)"
+  exit 1
+fi
+
 if [ -z "$NWT_LINKER_VERSION" ]; then
   echo "Error: NWT_LINKER_VERSION is not defined in .env"
   exit 1
