@@ -4,7 +4,7 @@ export const DEFAULT_URL_TEMPLATE = 'https://www.jw.org/finder?srcid=jwlshare&wt
 
 export const DEFAULT_SETTINGS: PluginSettings = {
 	enabled: true,
-	debounceTime: 1000,
+	debounceMs: 1000,
 	wtlocale: 'J',
 	pub: 'nwtsty',
 	urlTemplate: DEFAULT_URL_TEMPLATE,

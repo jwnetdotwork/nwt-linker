@@ -18,7 +18,7 @@ export interface ScriptureReference {
 
 export interface PluginSettings {
 	enabled: boolean;
-	debounceTime: number;
+	debounceMs: number;
 	wtlocale: string;
 	pub: string;
 	urlTemplate: string;
