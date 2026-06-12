@@ -55,7 +55,7 @@ export default class MyPlugin extends Plugin {
 			(await this.loadData()) as Partial<MyPluginSettings>,
 		);
 
-		if (!this.settings.aliases || Object.keys(this.settings.aliases).length === 0) {
+		if (this.settings.aliases === undefined) {
 			this.settings.aliases = { ...aliasesData.ja };
 			await this.saveSettings();
 		}

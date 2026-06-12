@@ -1,4 +1,4 @@
-import { App, Notice, PluginSettingTab, Setting } from 'obsidian';
+import { App, Modal, Notice, PluginSettingTab, Setting } from 'obsidian';
 import MyPlugin from './main';
 import { PluginSettings } from './core/types';
 import { DEFAULT_SETTINGS } from './core/constants';
@@ -7,16 +7,72 @@ import aliasesData from '../data/aliases.json';
 export { DEFAULT_SETTINGS };
 export type MyPluginSettings = PluginSettings;
 
+class ConfirmModal extends Modal {
+	constructor(
+		app: App,
+		private message: string,
+		private onConfirm: () => void,
+	) {
+		super(app);
+	}
+
+	onOpen() {
+		const { contentEl } = this;
+		contentEl.createEl('h3', { text: 'Confirm' });
+		contentEl.createEl('p', { text: this.message });
+
+		const buttonContainer = contentEl.createDiv();
+		buttonContainer.style.display = 'flex';
+		buttonContainer.style.justifyContent = 'flex-end';
+		buttonContainer.style.gap = '10px';
+		buttonContainer.style.marginTop = '20px';
+
+		const cancelBtn = buttonContainer.createEl('button', { text: 'Cancel' });
+		cancelBtn.onclick = () => this.close();
+
+		const confirmBtn = buttonContainer.createEl('button', { text: 'Confirm', cls: 'mod-warning' });
+		confirmBtn.onclick = () => {
+			this.onConfirm();
+			this.close();
+		};
+	}
+
+	onClose() {
+		const { contentEl } = this;
+		contentEl.empty();
+	}
+}
+
 export class SampleSettingTab extends PluginSettingTab {
 	plugin: MyPlugin;
+	private saveDebounceTimer: number | null = null;
+	private jsonTextArea: HTMLTextAreaElement | null = null;
 
 	constructor(app: App, plugin: MyPlugin) {
 		super(app, plugin);
 		this.plugin = plugin;
 	}
 
+	private updateJsonTextarea() {
+		if (this.jsonTextArea) {
+			this.jsonTextArea.value = JSON.stringify(this.plugin.settings.aliases, null, 2);
+		}
+	}
+
+	private async debouncedSave() {
+		if (this.saveDebounceTimer !== null) {
+			window.clearTimeout(this.saveDebounceTimer);
+		}
+		this.saveDebounceTimer = window.setTimeout(async () => {
+			this.saveDebounceTimer = null;
+			await this.plugin.saveSettings();
+			this.updateJsonTextarea();
+		}, 500);
+	}
+
 	display(): void {
 		const { containerEl } = this;
+		const scrollTop = containerEl.scrollTop;
 
 		containerEl.empty();
 
@@ -141,7 +197,7 @@ export class SampleSettingTab extends PluginSettingTab {
 					}),
 			);
 
-		containerEl.createEl('h3', { text: 'Book Name Aliases' });
+		containerEl.createEl('h3', { text: 'Book name aliases' });
 
 		// Add new alias
 		const addAliasSetting = new Setting(containerEl)
@@ -199,11 +255,11 @@ export class SampleSettingTab extends PluginSettingTab {
 			s.addText((text) => {
 				text.setPlaceholder('New book #')
 					.setValue(bookNum.toString())
-					.onChange(async (value) => {
+					.onChange((value) => {
 						const num = parseInt(value, 10);
 						if (!isNaN(num) && num >= 1 && num <= 66) {
 							this.plugin.settings.aliases[alias] = num;
-							await this.plugin.saveSettings();
+							this.debouncedSave();
 						}
 					});
 				text.inputEl.style.width = '60px';
@@ -223,18 +279,18 @@ export class SampleSettingTab extends PluginSettingTab {
 		}
 
 		// JSON Import/Export
-		containerEl.createEl('h3', { text: 'Import/Export Aliases' });
+		containerEl.createEl('h3', { text: 'Import/export aliases' });
 		const jsonDesc = containerEl.createEl('p', {
 			text: 'Import or export your aliases as JSON. When importing, it will overwrite your current aliases.',
 		});
 		jsonDesc.addClass('setting-item-description');
 
-		const jsonTextArea = containerEl.createEl('textarea', {
+		this.jsonTextArea = containerEl.createEl('textarea', {
 			cls: 'alias-json-textarea',
 		});
-		jsonTextArea.style.width = '100%';
-		jsonTextArea.style.height = '150px';
-		jsonTextArea.value = JSON.stringify(this.plugin.settings.aliases, null, 2);
+		this.jsonTextArea.style.width = '100%';
+		this.jsonTextArea.style.height = '150px';
+		this.jsonTextArea.value = JSON.stringify(this.plugin.settings.aliases, null, 2);
 
 		const buttonContainer = containerEl.createDiv();
 		buttonContainer.style.display = 'flex';
@@ -244,7 +300,8 @@ export class SampleSettingTab extends PluginSettingTab {
 		const importBtn = buttonContainer.createEl('button', { text: 'Import JSON' });
 		importBtn.addEventListener('click', async () => {
 			try {
-				const imported = JSON.parse(jsonTextArea.value);
+				const jsonValue = this.jsonTextArea?.value ?? '{}';
+				const imported = JSON.parse(jsonValue);
 				if (typeof imported !== 'object' || imported === null) {
 					throw new Error('Invalid JSON format: must be an object');
 				}
@@ -264,13 +321,15 @@ export class SampleSettingTab extends PluginSettingTab {
 		});
 
 		const resetBtn = buttonContainer.createEl('button', { text: 'Reset to Defaults (JP)' });
-		resetBtn.addEventListener('click', async () => {
-			if (confirm('Are you sure you want to reset all aliases to Japanese defaults?')) {
+		resetBtn.addEventListener('click', () => {
+			new ConfirmModal(this.app, 'Are you sure you want to reset all aliases to Japanese defaults?', async () => {
 				this.plugin.settings.aliases = { ...aliasesData.ja };
 				await this.plugin.saveSettings();
 				new Notice('Aliases reset to defaults');
 				this.display();
-			}
+			}).open();
 		});
+
+		containerEl.scrollTop = scrollTop;
 	}
 }

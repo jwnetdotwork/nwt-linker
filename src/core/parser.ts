@@ -24,11 +24,14 @@ export function parseSingleReference(
 	const firstPartMatch = normalizedAfterBook.match(/^(\s*)(\d+):(\d+)/);
 	if (!firstPartMatch) return null;
 
-	const leadingSpace = firstPartMatch[1] || '';
-	const chapterStr = firstPartMatch[2] || '0';
+	const leadingSpace = firstPartMatch[1] ?? '';
+	const chapterStr = firstPartMatch[2];
+	const firstVerseStr = firstPartMatch[3];
+	if (chapterStr === undefined || firstVerseStr === undefined) return null;
+
 	const chapter = parseInt(chapterStr, 10);
-	const firstVerseStr = firstPartMatch[3] || '0';
 	const firstVerse = parseInt(firstVerseStr, 10);
+	if (isNaN(chapter) || isNaN(firstVerse)) return null;
 
 	let currentIndex = firstPartMatch[0].length;
 	const parts: ScripturePart[] = [];
@@ -46,7 +49,10 @@ export function parseSingleReference(
 				return null;
 			}
 
-			firstPartEndVerse = parseInt(rangeMatch[1] || '0', 10);
+			const endVerseStr = rangeMatch[1];
+			if (endVerseStr === undefined) return null;
+			firstPartEndVerse = parseInt(endVerseStr, 10);
+			if (isNaN(firstPartEndVerse)) return null;
 			currentIndex += rangeMatch[0].length;
 			firstPartOriginalTextEnd = currentIndex;
 		} else {
@@ -77,8 +83,11 @@ export function parseSingleReference(
 			break;
 		}
 
-		const precedingText = afterBook.substring(currentIndex, currentIndex + (commaMatch[1]?.length || 0));
-		const verse = parseInt(commaMatch[2] || '0', 10);
+		const precedingText = afterBook.substring(currentIndex, currentIndex + (commaMatch[1]?.length ?? 0));
+		const verseStr = commaMatch[2];
+		if (verseStr === undefined) break;
+		const verse = parseInt(verseStr, 10);
+		if (isNaN(verse)) break;
 		let partEndIndex = currentIndex + commaMatch[0].length;
 		let endVerse: number | undefined;
 
@@ -96,7 +105,10 @@ export function parseSingleReference(
 					return null;
 				}
 
-				endVerse = parseInt(rangeMatch[1] || '0', 10);
+				const endVerseStr = rangeMatch[1];
+				if (endVerseStr === undefined) return null;
+				endVerse = parseInt(endVerseStr, 10);
+				if (isNaN(endVerse)) return null;
 				partEndIndex += rangeMatch[0].length;
 			} else {
 				return null; // Malformed range
@@ -138,7 +150,6 @@ export function parseSingleReference(
 	// VerseMap validation (Phase 4 requirement)
 	if (verseMap) {
 		const bookNumStr = bookMatch.bookNumber.toString();
-		// Explicitly typing verseMap or checking its structure
 		const chapters = (verseMap as Record<string, Record<string, number>>)[bookNumStr];
 		if (!chapters) return null;
 
@@ -149,8 +160,6 @@ export function parseSingleReference(
 			if (part.verse < 1 || part.verse > maxVerse) return null;
 			if (part.endVerse !== undefined) {
 				if (part.endVerse < 1 || part.endVerse > maxVerse) return null;
-				// Requirement 4.3: range start <= range end
-				if (part.verse > part.endVerse) return null;
 			}
 		}
 	}

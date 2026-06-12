@@ -77,7 +77,10 @@ function applyConversions(
 	for (let i = 0; i < refs.length; i++) {
 		const ref = refs[i];
 		const change = changes[i];
-		if (!ref || !change) continue;
+		if (!ref || !change) {
+			console.error(`NWT Linker: missing ref or change at index ${i}`, { refs, changes });
+			continue;
+		}
 		const markdownLink = change.text;
 		const lenDiff = markdownLink.length - ref.originalText.length;
 
