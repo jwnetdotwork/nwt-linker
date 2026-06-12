@@ -15,11 +15,15 @@ Links New World Translation Scripture references to jw.org.
 
 ## Releasing new releases
 
-- Update your `manifest.json` with your new version number, such as `1.0.1`, and the minimum Obsidian version required for your latest release.
-- Update your `versions.json` file with `"new-plugin-version": "minimum-obsidian-version"` so older versions of Obsidian can download an older version of your plugin that's compatible.
-- Create new GitHub release using your new version number as the "Tag version". Use the exact version number, don't include a prefix `v`.
-- Upload the files `manifest.json`, `main.js`, `styles.css` as binary attachments.
-- Publish the release.
+- Set the new version number in `.env` (e.g., `NWT_LINKER_VERSION=1.0.1`).
+- Run `./release.sh`. **Note:** Running this script is an explicit opt-in to trigger a cloud-based release flow. This will:
+    - Update `package.json`, `manifest.json`, and `versions.json`.
+    - Create a git commit and a tag (without `v` prefix).
+    - Push the changes and tag to GitHub.
+- Pushing to GitHub triggers the [GitHub Actions release workflow](.github/workflows/release.yml), which executes in an external cloud environment.
+    - **Data Sent:** Repository contents, commit metadata, tags, and generated build artifacts.
+    - **Risks:** External cloud execution, potential exposure of secrets if not properly configured, and auditability of all pushed data.
+    - **Opt-out:** To avoid triggering the cloud workflow, do not run `./release.sh` or push tags to GitHub; instead, follow manual installation steps.
 
 ## Improve code quality with eslint
 
