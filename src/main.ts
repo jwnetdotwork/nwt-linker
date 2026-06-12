@@ -1,92 +1,85 @@
 import {
 	Editor,
 	MarkdownView,
-	MarkdownFileInfo,
-	Modal,
-	Notice,
 	Plugin,
+	TFile,
 } from 'obsidian';
 import {
 	DEFAULT_SETTINGS,
 	MyPluginSettings,
 	SampleSettingTab,
 } from './settings';
-
-// Remember to rename these classes and interfaces!
+import { parseSingleReference } from './core/parser';
+import { referenceToMarkdown } from './core/converter';
+import aliasesData from '../data/aliases.json';
 
 export default class MyPlugin extends Plugin {
 	settings!: MyPluginSettings;
+	private debounceTimer: number | null = null;
 
 	async onload() {
 		await this.loadSettings();
 
-		// This creates an icon in the left ribbon.
-		this.addRibbonIcon('dice', 'Sample', (_evt: MouseEvent) => {
-			// Called when the user clicks the icon.
-			new Notice('This is a notice!');
-		});
-
-		// This adds a status bar item to the bottom of the app. Does not work on mobile apps.
-		const statusBarItemEl = this.addStatusBarItem();
-		statusBarItemEl.setText('Status bar text');
-
-		// This adds a simple command that can be triggered anywhere
-		this.addCommand({
-			id: 'open-modal-simple',
-			name: 'Open modal (simple)',
-			callback: () => {
-				new SampleModal(this.app).open();
-			},
-		});
-		// This adds an editor command that can perform some operation on the current editor instance
-		this.addCommand({
-			id: 'replace-selected',
-			name: 'Replace selected content',
-			editorCallback: (
-				editor: Editor,
-				_ctx: MarkdownView | MarkdownFileInfo,
-			) => {
-				editor.replaceSelection('Sample editor command');
-			},
-		});
-		// This adds a complex command that can check whether the current state of the app allows execution of the command
-		this.addCommand({
-			id: 'open-modal-complex',
-			name: 'Open modal (complex)',
-			checkCallback: (checking: boolean) => {
-				// Conditions to check
-				const markdownView =
-					this.app.workspace.getActiveViewOfType(MarkdownView);
-				if (markdownView) {
-					// If checking is true, we're simply "checking" if the command can be run.
-					// If checking is false, then we want to actually perform the operation.
-					if (!checking) {
-						new SampleModal(this.app).open();
-					}
-
-					// This command will only show up in Command Palette when the check function returns true
-					return true;
-				}
-				return false;
-			},
-		});
-
-		// This adds a settings tab so the user can configure various aspects of the plugin
 		this.addSettingTab(new SampleSettingTab(this.app, this));
 
-		// If the plugin hooks up any global DOM events (on parts of the app that doesn't belong to this plugin)
-		// Using this function will automatically remove the event listener when this plugin is disabled.
-		this.registerDomEvent(activeDocument, 'click', (_evt: MouseEvent) => {
-			new Notice('Click');
-		});
-
-		// When registering intervals, this function will automatically clear the interval when the plugin is disabled.
-		this.registerInterval(
-			window.setInterval(() => console.log('setInterval'), 5 * 60 * 1000),
+		this.registerEvent(
+			this.app.workspace.on('editor-change', (editor: Editor, info: MarkdownView | TFile) => {
+				if (!(info instanceof MarkdownView)) return;
+				this.handleEditorChange(editor);
+			})
 		);
 	}
 
-	onunload() {}
+	onunload() {
+		if (this.debounceTimer) {
+			window.clearTimeout(this.debounceTimer);
+		}
+	}
+
+	private handleEditorChange(editor: Editor) {
+		if (!this.settings.enabled) return;
+
+		if (this.debounceTimer) {
+			window.clearTimeout(this.debounceTimer);
+		}
+
+		this.debounceTimer = window.setTimeout(() => {
+			this.convertReferenceInCurrentLine(editor);
+		}, this.settings.debounceMs);
+	}
+
+	private convertReferenceInCurrentLine(editor: Editor) {
+		const cursor = editor.getCursor();
+		const lineText = editor.getLine(cursor.line);
+
+		// Use the Japanese aliases for now as per data/aliases.json structure
+		const aliases = aliasesData.ja;
+
+		// Phase 1: Only convert the first reference in the current line
+		// To allow for multiple references in the future, we could loop.
+		// But for now, we follow Phase 1 requirement.
+
+		// We need to scan the line. parseSingleReference currently expects to start at the book name.
+		// So we need to find where the book name might start.
+
+		// Simple approach for Phase 1: Try to parse starting from each position in the line
+		// or use a more efficient way to find potential book names.
+		for (let i = 0; i < lineText.length; i++) {
+			const ref = parseSingleReference(lineText.substring(i), aliases, i);
+			if (ref) {
+				const markdownLink = referenceToMarkdown(ref, this.settings);
+
+				// Replace the original text with the markdown link
+				const from = { line: cursor.line, ch: ref.startIndex };
+				const to = { line: cursor.line, ch: ref.endIndex };
+
+				editor.replaceRange(markdownLink, from, to);
+
+				// For Phase 1, we stop after the first conversion
+				break;
+			}
+		}
+	}
 
 	async loadSettings() {
 		this.settings = Object.assign(
@@ -98,17 +91,5 @@ export default class MyPlugin extends Plugin {
 
 	async saveSettings() {
 		await this.saveData(this.settings);
-	}
-}
-
-class SampleModal extends Modal {
-	onOpen() {
-		const { contentEl } = this;
-		contentEl.setText('Woah!');
-	}
-
-	onClose() {
-		const { contentEl } = this;
-		contentEl.empty();
 	}
 }
