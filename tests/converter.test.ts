@@ -42,14 +42,13 @@ describe('converter', () => {
 				bookAlias: 'テトス',
 				bookNumber: 56,
 				chapter: 1,
-				parts: [{ verse: 14, originalText: '1:14' }],
+				parts: [{ verse: 14, originalText: 'テトス1:14' }],
 				originalText: 'テトス1:14',
 				startIndex: 0,
 				endIndex: 7
 			};
 
 			const markdown = referenceToMarkdown(ref, DEFAULT_SETTINGS);
-			// Default template: https://www.jw.org/finder?srcid=jwlshare&wtlocale={{wtlocale}}&prefer=lang&bible={{bible}}&pub={{pub}}
 			expect(markdown).toContain('[テトス1:14]');
 			expect(markdown).toContain('bible=56001014');
 			expect(markdown).toContain('wtlocale=J');
@@ -61,7 +60,7 @@ describe('converter', () => {
 				bookAlias: 'テトス',
 				bookNumber: 56,
 				chapter: 1,
-				parts: [{ verse: 14, originalText: '１：１４' }],
+				parts: [{ verse: 14, originalText: 'テトス１：１４' }],
 				originalText: 'テトス１：１４',
 				startIndex: 0,
 				endIndex: 8

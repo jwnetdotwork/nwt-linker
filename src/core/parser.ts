@@ -1,10 +1,10 @@
 import { findBookMatch } from './aliases';
 import { normalizeText } from './normalization';
-import { ScriptureReference } from './types';
+import { ScriptureReference, ScripturePart } from './types';
 
 /**
- * Parses a string for a single scripture reference.
- * Currently only supports {Book} {Chapter}:{Verse} format.
+ * Parses a string for a scripture reference.
+ * Supports multiple verses and ranges (e.g., "Gen 1:1, 2-3").
  */
 export function parseSingleReference(
 	text: string,
@@ -17,55 +17,143 @@ export function parseSingleReference(
 	if (!bookMatch) return null;
 
 	const afterBook = text.substring(bookMatch.matchLength);
-
-	// 2. Normalize the rest for easier parsing of chapter:verse
-	// We only normalize after the book name to preserve the original book name if needed,
-	// though the requirements say "normalized for analysis, original for display".
 	const normalizedAfterBook = normalizeText(afterBook);
 
-	// Check if it matches " {Chapter}:{Verse}" or "{Chapter}:{Verse}"
-	// Require the match to end at the verse boundary to avoid "テトス1:14abc"
-	const match = normalizedAfterBook.match(/^(\s*)(\d+):(\d+)$/);
-	if (!match || match[1] === undefined || match[2] === undefined || match[3] === undefined) return null;
+	// 2. Parse Chapter:Verse
+	// Match chapter and first verse part
+	const firstPartMatch = normalizedAfterBook.match(/^(\s*)(\d+):(\d+)/);
+	if (!firstPartMatch) return null;
 
-	const space = match[1];
-	const chapterStr = match[2];
-	const verseStr = match[3];
-
+	const leadingSpace = firstPartMatch[1];
+	const chapterStr = firstPartMatch[2];
 	const chapter = parseInt(chapterStr, 10);
-	const verse = parseInt(verseStr, 10);
+	const firstVerseStr = firstPartMatch[3];
+	const firstVerse = parseInt(firstVerseStr, 10);
 
-	// Validate against verseMap if provided
+	let currentIndex = firstPartMatch[0].length;
+	const parts: ScripturePart[] = [];
+
+	// Check if the first verse is part of a range
+	let firstPartEndVerse: number | undefined;
+	let firstPartOriginalTextEnd = currentIndex;
+
+	if (normalizedAfterBook[currentIndex] === '-') {
+		const rangeMatch = normalizedAfterBook.substring(currentIndex).match(/^-(\d+)/);
+		if (rangeMatch) {
+			// Check for chapter crossing in range: e.g., 21:3-22:1
+			const afterRangeIndex = currentIndex + rangeMatch[0].length;
+			if (normalizedAfterBook[afterRangeIndex] === ':') {
+				return null;
+			}
+
+			firstPartEndVerse = parseInt(rangeMatch[1], 10);
+			currentIndex += rangeMatch[0].length;
+			firstPartOriginalTextEnd = currentIndex;
+		} else {
+			// Malformed range like "21:3-"
+			return null;
+		}
+	}
+
+	parts.push({
+		verse: firstVerse,
+		endVerse: firstPartEndVerse,
+		originalText: text.substring(0, bookMatch.matchLength + firstPartOriginalTextEnd),
+		precedingText: '',
+	});
+
+	// 3. Parse subsequent parts
+	while (currentIndex < normalizedAfterBook.length) {
+		const remaining = normalizedAfterBook.substring(currentIndex);
+
+		// Stop at semicolon - it's a delimiter for independent references
+		if (remaining.startsWith(';')) {
+			break;
+		}
+
+		// Expect a comma
+		const commaMatch = remaining.match(/^(\s*,\s*)(\d+)/);
+		if (!commaMatch) {
+			break;
+		}
+
+		const precedingText = afterBook.substring(currentIndex, currentIndex + commaMatch[1].length);
+		const verse = parseInt(commaMatch[2], 10);
+		let partEndIndex = currentIndex + commaMatch[0].length;
+		let endVerse: number | undefined;
+
+		// Check for chapter crossing in comma: e.g., 21:3, 22:1
+		if (normalizedAfterBook[partEndIndex] === ':') {
+			return null;
+		}
+
+		// Check for range in subsequent part
+		if (normalizedAfterBook[partEndIndex] === '-') {
+			const rangeMatch = normalizedAfterBook.substring(partEndIndex).match(/^-(\d+)/);
+			if (rangeMatch) {
+				const afterRangeIndex = partEndIndex + rangeMatch[0].length;
+				if (normalizedAfterBook[afterRangeIndex] === ':') {
+					return null;
+				}
+
+				endVerse = parseInt(rangeMatch[1], 10);
+				partEndIndex += rangeMatch[0].length;
+			} else {
+				return null; // Malformed range
+			}
+		}
+
+		parts.push({
+			verse,
+			endVerse,
+			originalText: afterBook.substring(currentIndex + commaMatch[1].length, partEndIndex),
+			precedingText,
+		});
+
+		currentIndex = partEndIndex;
+	}
+
+	// Requirement 9 & 1.5: Check for unexpected trailing characters or chapter crossing
+	if (currentIndex < normalizedAfterBook.length) {
+		const trailing = normalizedAfterBook.substring(currentIndex);
+		if (/^[,:-]/.test(trailing)) {
+			return null;
+		}
+		if (/[a-zA-Z0-9]/.test(trailing[0])) {
+			return null;
+		}
+	}
+
+	const matchEndIndex = bookMatch.matchLength + currentIndex;
+	const originalText = text.substring(0, matchEndIndex);
+
+	// Basic validation (Phase 3 requirement)
+	for (const part of parts) {
+		if (part.endVerse !== undefined && part.verse > part.endVerse) {
+			return null;
+		}
+	}
+
+	// VerseMap validation (Optional for Phase 3)
 	if (verseMap) {
 		const bookNumStr = bookMatch.bookNumber.toString();
 		const chapters = verseMap[bookNumStr];
 		if (!chapters) return null;
 
 		const maxVerse = chapters[chapter.toString()];
-		if (maxVerse === undefined || verse < 1 || verse > maxVerse) {
-			return null;
+		if (maxVerse === undefined) return null;
+
+		for (const part of parts) {
+			if (part.verse < 1 || part.verse > maxVerse) return null;
+			if (part.endVerse !== undefined && (part.endVerse < 1 || part.endVerse > maxVerse)) return null;
 		}
 	}
-
-	const matchEndIndex = bookMatch.matchLength + match[0].length;
-	const originalText = text.substring(0, matchEndIndex);
-
-	// Requirement: parse failed for "テトス1章14節"
-	// If the text continues with something that looks like part of a reference but isn't supported,
-	// we might need more checks. But the regex ^ above handles the start.
-	// Does it handle "テトス1:14章"? The prompt says "テトス1:14" should be parsed.
-	// Usually, if it's followed by more text, it's fine unless it's the "1章" format.
 
 	return {
 		bookAlias: bookMatch.bookAlias,
 		bookNumber: bookMatch.bookNumber,
 		chapter,
-		parts: [
-			{
-				verse,
-				originalText: match[0].substring(space.length), // Just the "1:14" part
-			},
-		],
+		parts,
 		originalText,
 		startIndex,
 		endIndex: startIndex + matchEndIndex,

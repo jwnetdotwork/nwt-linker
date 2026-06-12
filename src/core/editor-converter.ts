@@ -5,7 +5,7 @@ import { PluginSettings, ScriptureReference } from './types';
 import { getExclusionRanges, isInsideFencedCodeBlock } from './exclusion';
 
 /**
- * Scans the current line in the editor and converts the first found scripture reference to a Markdown link.
+ * Scans the current line in the editor and converts all found scripture references to Markdown links.
  */
 export function convertReferenceInCurrentLine(
 	editor: Editor,
@@ -30,8 +30,7 @@ export function convertReferenceInCurrentLine(
 	const lineText = editor.getLine(cursor.line);
 	const exclusionRanges = getExclusionRanges(lineText);
 
-	// Precompute candidate book names sorted by length descending
-	const bookNames = Object.keys(aliases).sort((a, b) => b.length - a.length);
+	const references: ScriptureReference[] = [];
 
 	for (let i = 0; i < lineText.length; i++) {
 		// Skip exclusion ranges
@@ -41,90 +40,65 @@ export function convertReferenceInCurrentLine(
 			continue;
 		}
 
-		// Optimization: Only attempt parsing if the current position matches a book name
-		const match = bookNames.find(name => lineText.startsWith(name, i));
-		if (!match) continue;
-
-		// We found a potential book name start, now try to parse the whole reference
+		// Optimization: Only attempt parsing if the current position looks like a start of something.
+		// We don't pre-check book names here to be safe and handle the scanning correctly.
+		// However, parseSingleReference starts with findBookMatch.
 		const ref = parseSingleReference(lineText.substring(i), aliases, i);
 		if (ref) {
-			applyConversion(editor, ref, cursor, settings);
-			// Phase 1/2 requirement: stop after the first conversion
-			break;
+			references.push(ref);
+			i = ref.endIndex - 1;
 		}
+	}
+
+	if (references.length > 0) {
+		applyConversions(editor, references, cursor, settings);
 	}
 }
 
 /**
- * Applies the conversion with cursor correction in a single transaction.
+ * Applies multiple conversions with cursor correction in a single transaction.
  */
-function applyConversion(
+function applyConversions(
 	editor: Editor,
-	ref: ScriptureReference,
+	refs: ScriptureReference[],
 	cursor: EditorPosition,
 	settings: PluginSettings
 ): void {
-	const markdownLink = referenceToMarkdown(ref, settings);
-	const from = { line: cursor.line, ch: ref.startIndex };
-	const to = { line: cursor.line, ch: ref.endIndex };
+	const changes = refs.map(ref => ({
+		from: { line: cursor.line, ch: ref.startIndex },
+		to: { line: cursor.line, ch: ref.endIndex },
+		text: referenceToMarkdown(ref, settings),
+	}));
 
-	if (!isValidPosition(from) || !isValidPosition(to) || !isValidPosition(cursor)) {
-		console.warn('NWT Linker: skipped conversion with invalid editor positions', {
-			ref,
-			cursor,
-			from,
-			to,
-		});
-		return;
-	}
-
-	const lenDiff = markdownLink.length - ref.originalText.length;
 	let newCursor = { ...cursor };
+	let totalLenDiff = 0;
 
-	if (cursor.ch >= ref.endIndex) {
-		newCursor.ch += lenDiff;
-	} else if (cursor.ch > ref.startIndex) {
-		// Cursor is inside the reference being converted.
-		// Place it at the end of the new link to be safe.
-		newCursor.ch = ref.startIndex + markdownLink.length;
+	for (let i = 0; i < refs.length; i++) {
+		const ref = refs[i];
+		const markdownLink = changes[i].text;
+		const lenDiff = markdownLink.length - ref.originalText.length;
+
+		if (cursor.ch >= ref.endIndex) {
+			totalLenDiff += lenDiff;
+		} else if (cursor.ch > ref.startIndex) {
+			newCursor.ch = ref.startIndex + totalLenDiff + markdownLink.length;
+			totalLenDiff = 0;
+			break;
+		}
 	}
+	newCursor.ch += totalLenDiff;
 
 	try {
 		editor.transaction({
-			changes: [{
-				from,
-				to,
-				text: markdownLink,
-			}],
+			changes,
 			selection: { from: { ...newCursor } },
 		});
 	} catch (error) {
 		console.error('NWT Linker: conversion transaction failed', {
 			error,
-			ref,
+			refs,
 			cursor,
-			from,
-			to,
-			markdownLink,
+			changes,
 		});
-
-		// Fallback keeps the conversion functional even if transaction selection handling breaks.
-		try {
-			editor.replaceRange(markdownLink, from, to);
-			editor.setCursor(newCursor);
-		} catch (fallbackError) {
-			console.error('NWT Linker: fallback conversion failed', {
-				fallbackError,
-				ref,
-				cursor,
-				from,
-				to,
-				markdownLink,
-			});
-		}
 	}
-}
-
-function isValidPosition(position: { line: number; ch: number }): boolean {
-	return Number.isInteger(position.line) && Number.isInteger(position.ch) && position.line >= 0 && position.ch >= 0;
 }

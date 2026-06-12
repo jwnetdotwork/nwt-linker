@@ -2,8 +2,8 @@ export interface ScripturePart {
 	verse: number;
 	endVerse?: number;
 	originalText: string;
-	// For multiple verses, we might need a way to store the separator/whitespace
-	separator?: string;
+	/** The text (like a comma and space) that precedes this part. */
+	precedingText?: string;
 }
 
 export interface ScriptureReference {
