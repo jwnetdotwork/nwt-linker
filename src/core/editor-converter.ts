@@ -3,6 +3,7 @@ import { parseSingleReference } from './parser';
 import { referenceToMarkdown } from './converter';
 import { PluginSettings, ScriptureReference } from './types';
 import { getExclusionRanges, isInsideFencedCodeBlock } from './exclusion';
+import verseMap from '../../data/verse-map.json';
 
 /**
  * Scans the current line in the editor and converts all found scripture references to Markdown links.
@@ -43,7 +44,7 @@ export function convertReferenceInCurrentLine(
 		// Optimization: Only attempt parsing if the current position looks like a start of something.
 		// We don't pre-check book names here to be safe and handle the scanning correctly.
 		// However, parseSingleReference starts with findBookMatch.
-		const ref = parseSingleReference(lineText.substring(i), aliases, i);
+		const ref = parseSingleReference(lineText.substring(i), aliases, i, verseMap);
 		if (ref) {
 			references.push(ref);
 			i = ref.endIndex - 1;
@@ -75,7 +76,12 @@ function applyConversions(
 
 	for (let i = 0; i < refs.length; i++) {
 		const ref = refs[i];
-		const markdownLink = changes[i].text;
+		const change = changes[i];
+		if (!ref || !change) {
+			console.error(`NWT Linker: missing ref or change at index ${i}`, { refs, changes });
+			continue;
+		}
+		const markdownLink = change.text;
 		const lenDiff = markdownLink.length - ref.originalText.length;
 
 		if (cursor.ch >= ref.endIndex) {

@@ -44,7 +44,7 @@ export default class MyPlugin extends Plugin {
 
 		this.debounceTimer = window.setTimeout(() => {
 			this.debounceTimer = null;
-			convertReferenceInCurrentLine(editor, aliasesData.ja, this.settings);
+			convertReferenceInCurrentLine(editor, this.settings.aliases, this.settings);
 		}, this.settings.debounceMs);
 	}
 
@@ -54,6 +54,11 @@ export default class MyPlugin extends Plugin {
 			DEFAULT_SETTINGS,
 			(await this.loadData()) as Partial<MyPluginSettings>,
 		);
+
+		if (this.settings.aliases === undefined) {
+			this.settings.aliases = { ...aliasesData.ja };
+			await this.saveSettings();
+		}
 	}
 
 	async saveSettings() {
