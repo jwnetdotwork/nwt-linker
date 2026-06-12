@@ -4,8 +4,8 @@
 - docs/spec.md
 - docs/ARCHITECTURE.md
 
-各タスクリスト
-- docs/tasks/phase1.md
+各タスクリスト[1-8]
+- docs/tasks/task{X}.md
 
 ## Project overview
 

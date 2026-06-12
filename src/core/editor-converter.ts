@@ -14,16 +14,20 @@ export function convertReferenceInCurrentLine(
 ): void {
 	const cursor = editor.getCursor();
 	const lineCount = editor.lineCount();
-	const allLines = [];
+	const allLines: string[] = [];
 	for (let i = 0; i < lineCount; i++) {
 		allLines.push(editor.getLine(i));
+	}
+
+	if (cursor.line < 0 || cursor.line >= lineCount) {
+		return;
 	}
 
 	if (isInsideFencedCodeBlock(allLines, cursor.line)) {
 		return;
 	}
 
-	const lineText = allLines[cursor.line];
+	const lineText = editor.getLine(cursor.line);
 	const exclusionRanges = getExclusionRanges(lineText);
 
 	// Precompute candidate book names sorted by length descending
@@ -64,6 +68,16 @@ function applyConversion(
 	const from = { line: cursor.line, ch: ref.startIndex };
 	const to = { line: cursor.line, ch: ref.endIndex };
 
+	if (!isValidPosition(from) || !isValidPosition(to) || !isValidPosition(cursor)) {
+		console.warn('NWT Linker: skipped conversion with invalid editor positions', {
+			ref,
+			cursor,
+			from,
+			to,
+		});
+		return;
+	}
+
 	const lenDiff = markdownLink.length - ref.originalText.length;
 	let newCursor = { ...cursor };
 
@@ -75,12 +89,42 @@ function applyConversion(
 		newCursor.ch = ref.startIndex + markdownLink.length;
 	}
 
-	editor.transaction({
-		changes: [{
+	try {
+		editor.transaction({
+			changes: [{
+				from,
+				to,
+				text: markdownLink,
+			}],
+			selection: { from: { ...newCursor } },
+		});
+	} catch (error) {
+		console.error('NWT Linker: conversion transaction failed', {
+			error,
+			ref,
+			cursor,
 			from,
 			to,
-			text: markdownLink
-		}],
-		selection: { head: newCursor, anchor: newCursor }
-	});
+			markdownLink,
+		});
+
+		// Fallback keeps the conversion functional even if transaction selection handling breaks.
+		try {
+			editor.replaceRange(markdownLink, from, to);
+			editor.setCursor(newCursor);
+		} catch (fallbackError) {
+			console.error('NWT Linker: fallback conversion failed', {
+				fallbackError,
+				ref,
+				cursor,
+				from,
+				to,
+				markdownLink,
+			});
+		}
+	}
+}
+
+function isValidPosition(position: { line: number; ch: number }): boolean {
+	return Number.isInteger(position.line) && Number.isInteger(position.ch) && position.line >= 0 && position.ch >= 0;
 }

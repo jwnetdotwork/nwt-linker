@@ -1,8 +1,8 @@
 import {
 	Editor,
+	MarkdownFileInfo,
 	MarkdownView,
 	Plugin,
-	TFile,
 } from 'obsidian';
 import {
 	DEFAULT_SETTINGS,
@@ -22,7 +22,7 @@ export default class MyPlugin extends Plugin {
 		this.addSettingTab(new SampleSettingTab(this.app, this));
 
 		this.registerEvent(
-			this.app.workspace.on('editor-change', (editor: Editor, info: MarkdownView | TFile) => {
+			this.app.workspace.on('editor-change', (editor: Editor, info: MarkdownView | MarkdownFileInfo) => {
 				if (!(info instanceof MarkdownView)) return;
 				this.handleEditorChange(editor);
 			})

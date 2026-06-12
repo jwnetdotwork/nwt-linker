@@ -72,7 +72,8 @@ function isRangeOverlapping(start: number, end: number, ranges: ExclusionRange[]
 export function isInsideFencedCodeBlock(lines: string[], currentLineIndex: number): boolean {
 	let inside = false;
 	for (let i = 0; i <= currentLineIndex; i++) {
-		if (lines[i].trimStart().startsWith('```')) {
+		const line = lines[i];
+		if (line?.trimStart().startsWith('```')) {
 			inside = !inside;
 		}
 	}
@@ -89,12 +90,14 @@ export function isInsideFencedCodeBlock(lines: string[], currentLineIndex: numbe
 	// Let's refine:
 	let insideBeforeLine = false;
 	for (let i = 0; i < currentLineIndex; i++) {
-		if (lines[i].trimStart().startsWith('```')) {
+		const line = lines[i];
+		if (line?.trimStart().startsWith('```')) {
 			insideBeforeLine = !insideBeforeLine;
 		}
 	}
 
-	const currentLineIsFence = lines[currentLineIndex].trimStart().startsWith('```');
+	const currentLine = lines[currentLineIndex];
+	const currentLineIsFence = currentLine?.trimStart().startsWith('```') ?? false;
 
 	return insideBeforeLine || currentLineIsFence;
 }
