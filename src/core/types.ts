@@ -22,6 +22,5 @@ export interface PluginSettings {
 	wtlocale: string;
 	pub: string;
 	urlTemplate: string;
-	aliases: Record<string, Record<string, number>>;
-	// verseMap will be added in Phase 4
+	aliases: Record<string, number>;
 }

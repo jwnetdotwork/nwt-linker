@@ -24,10 +24,10 @@ export function parseSingleReference(
 	const firstPartMatch = normalizedAfterBook.match(/^(\s*)(\d+):(\d+)/);
 	if (!firstPartMatch) return null;
 
-	const leadingSpace = firstPartMatch[1];
-	const chapterStr = firstPartMatch[2];
+	const leadingSpace = firstPartMatch[1] || '';
+	const chapterStr = firstPartMatch[2] || '0';
 	const chapter = parseInt(chapterStr, 10);
-	const firstVerseStr = firstPartMatch[3];
+	const firstVerseStr = firstPartMatch[3] || '0';
 	const firstVerse = parseInt(firstVerseStr, 10);
 
 	let currentIndex = firstPartMatch[0].length;
@@ -46,7 +46,7 @@ export function parseSingleReference(
 				return null;
 			}
 
-			firstPartEndVerse = parseInt(rangeMatch[1], 10);
+			firstPartEndVerse = parseInt(rangeMatch[1] || '0', 10);
 			currentIndex += rangeMatch[0].length;
 			firstPartOriginalTextEnd = currentIndex;
 		} else {
@@ -77,8 +77,8 @@ export function parseSingleReference(
 			break;
 		}
 
-		const precedingText = afterBook.substring(currentIndex, currentIndex + commaMatch[1].length);
-		const verse = parseInt(commaMatch[2], 10);
+		const precedingText = afterBook.substring(currentIndex, currentIndex + (commaMatch[1]?.length || 0));
+		const verse = parseInt(commaMatch[2] || '0', 10);
 		let partEndIndex = currentIndex + commaMatch[0].length;
 		let endVerse: number | undefined;
 
@@ -96,7 +96,7 @@ export function parseSingleReference(
 					return null;
 				}
 
-				endVerse = parseInt(rangeMatch[1], 10);
+				endVerse = parseInt(rangeMatch[1] || '0', 10);
 				partEndIndex += rangeMatch[0].length;
 			} else {
 				return null; // Malformed range
@@ -106,7 +106,7 @@ export function parseSingleReference(
 		parts.push({
 			verse,
 			endVerse,
-			originalText: afterBook.substring(currentIndex + commaMatch[1].length, partEndIndex),
+			originalText: afterBook.substring(currentIndex + (commaMatch[1]?.length || 0), partEndIndex),
 			precedingText,
 		});
 
@@ -119,7 +119,8 @@ export function parseSingleReference(
 		if (/^[,:-]/.test(trailing)) {
 			return null;
 		}
-		if (/[a-zA-Z0-9]/.test(trailing[0])) {
+		const firstTrailingChar = trailing[0];
+		if (firstTrailingChar && /[a-zA-Z0-9]/.test(firstTrailingChar)) {
 			return null;
 		}
 	}
@@ -134,10 +135,11 @@ export function parseSingleReference(
 		}
 	}
 
-	// VerseMap validation (Optional for Phase 3)
+	// VerseMap validation (Phase 4 requirement)
 	if (verseMap) {
 		const bookNumStr = bookMatch.bookNumber.toString();
-		const chapters = verseMap[bookNumStr];
+		// Explicitly typing verseMap or checking its structure
+		const chapters = (verseMap as Record<string, Record<string, number>>)[bookNumStr];
 		if (!chapters) return null;
 
 		const maxVerse = chapters[chapter.toString()];
@@ -145,7 +147,11 @@ export function parseSingleReference(
 
 		for (const part of parts) {
 			if (part.verse < 1 || part.verse > maxVerse) return null;
-			if (part.endVerse !== undefined && (part.endVerse < 1 || part.endVerse > maxVerse)) return null;
+			if (part.endVerse !== undefined) {
+				if (part.endVerse < 1 || part.endVerse > maxVerse) return null;
+				// Requirement 4.3: range start <= range end
+				if (part.verse > part.endVerse) return null;
+			}
 		}
 	}
 
