@@ -15,6 +15,8 @@ import { ensureDefaultAliases } from './core/settings-utils';
 export default class MyPlugin extends Plugin {
 	settings!: MyPluginSettings;
 	private debounceTimer: number | null = null;
+	private isComposing = false;
+	private lastCompositionEndAt = 0;
 
 	async onload() {
 		await this.loadSettings();
@@ -27,6 +29,29 @@ export default class MyPlugin extends Plugin {
 				this.handleEditorChange(editor);
 			})
 		);
+
+		this.registerDomEvent(window, 'compositionstart', () => {
+			this.isComposing = true;
+			if (this.debounceTimer !== null) {
+				window.clearTimeout(this.debounceTimer);
+				this.debounceTimer = null;
+			}
+		});
+
+		this.registerDomEvent(window, 'compositionupdate', () => {
+			this.isComposing = true;
+		});
+
+		this.registerDomEvent(window, 'compositionend', () => {
+			this.isComposing = false;
+			this.lastCompositionEndAt = Date.now();
+
+			// After composition ends, trigger a normal debounce
+			const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
+			if (activeView) {
+				this.handleEditorChange(activeView.editor);
+			}
+		});
 	}
 
 	onunload() {
@@ -36,7 +61,7 @@ export default class MyPlugin extends Plugin {
 	}
 
 	private handleEditorChange(editor: Editor) {
-		if (!this.settings.enabled) return;
+		if (!this.settings.enabled || this.isComposing) return;
 
 		if (this.debounceTimer !== null) {
 			window.clearTimeout(this.debounceTimer);
@@ -44,6 +69,17 @@ export default class MyPlugin extends Plugin {
 
 		this.debounceTimer = window.setTimeout(() => {
 			this.debounceTimer = null;
+
+			// Final check before conversion
+			if (this.isComposing) return;
+
+			const now = Date.now();
+			if (now - this.lastCompositionEndAt < 200) {
+				// Re-schedule if within safety buffer
+				this.handleEditorChange(editor);
+				return;
+			}
+
 			convertReferenceInCurrentLine(editor, this.settings.aliases, this.settings);
 		}, this.settings.debounceMs);
 	}
