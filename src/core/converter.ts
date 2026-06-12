@@ -21,9 +21,9 @@ export function generateUrl(
 	settings: Pick<PluginSettings, 'wtlocale' | 'pub' | 'urlTemplate'>
 ): string {
 	return settings.urlTemplate
-		.replace('{{bible}}', bibleId)
-		.replace('{{wtlocale}}', settings.wtlocale)
-		.replace('{{pub}}', settings.pub);
+		.replaceAll('{{bible}}', bibleId)
+		.replaceAll('{{wtlocale}}', settings.wtlocale)
+		.replaceAll('{{pub}}', settings.pub);
 }
 
 /**
@@ -48,13 +48,17 @@ export function referenceToMarkdown(
 	ref: ScriptureReference,
 	settings: PluginSettings
 ): string {
+	if (!ref.parts || ref.parts.length === 0) {
+		throw new Error('ScriptureReference must have at least one part');
+	}
+
 	// In Phase 1, we only have one part, and the originalText of the reference
 	// is the whole thing (e.g., "テトス1:14").
 	// The requirement says: "表示テキストには元の入力文字列を使用する"
 
 	// For multiple parts (Phase 3), we'll need more complex logic.
 	// For now, we take the first verse to generate the Bible ID.
-	const firstPart = ref.parts[0];
+	const firstPart = ref.parts[0]!;
 	const bibleId = generateBibleId(ref.bookNumber, ref.chapter, firstPart.verse);
 	const url = generateUrl(bibleId, settings);
 

@@ -23,6 +23,17 @@ describe('converter', () => {
 			const expected = 'https://www.jw.org/finder?bible=56001014&wtlocale=J&pub=nwtsty';
 			expect(generateUrl(bibleId, settings)).toBe(expected);
 		});
+
+		it('should replace multiple occurrences of placeholders', () => {
+			const bibleId = '56001014';
+			const settings = {
+				wtlocale: 'J',
+				pub: 'nwtsty',
+				urlTemplate: 'https://www.jw.org/finder?bible={{bible}}&wtlocale={{wtlocale}}&pub={{pub}}&ref={{bible}}'
+			};
+			const expected = 'https://www.jw.org/finder?bible=56001014&wtlocale=J&pub=nwtsty&ref=56001014';
+			expect(generateUrl(bibleId, settings)).toBe(expected);
+		});
 	});
 
 	describe('referenceToMarkdown', () => {
@@ -59,6 +70,20 @@ describe('converter', () => {
 			const markdown = referenceToMarkdown(ref, DEFAULT_SETTINGS);
 			expect(markdown).toContain('[テトス１：１４]');
 			expect(markdown).toContain('bible=56001014');
+		});
+
+		it('should throw when ScriptureReference has no parts', () => {
+			const ref: ScriptureReference = {
+				bookAlias: 'テトス',
+				bookNumber: 56,
+				chapter: 1,
+				parts: [],
+				originalText: 'テトス1:',
+				startIndex: 0,
+				endIndex: 4
+			};
+
+			expect(() => referenceToMarkdown(ref, DEFAULT_SETTINGS)).toThrow('ScriptureReference must have at least one part');
 		});
 	});
 });

@@ -9,8 +9,7 @@ import {
 	MyPluginSettings,
 	SampleSettingTab,
 } from './settings';
-import { parseSingleReference } from './core/parser';
-import { referenceToMarkdown } from './core/converter';
+import { convertReferenceInCurrentLine } from './core/editor-converter';
 import aliasesData from '../data/aliases.json';
 
 export default class MyPlugin extends Plugin {
@@ -31,7 +30,7 @@ export default class MyPlugin extends Plugin {
 	}
 
 	onunload() {
-		if (this.debounceTimer) {
+		if (this.debounceTimer !== null) {
 			window.clearTimeout(this.debounceTimer);
 		}
 	}
@@ -39,46 +38,14 @@ export default class MyPlugin extends Plugin {
 	private handleEditorChange(editor: Editor) {
 		if (!this.settings.enabled) return;
 
-		if (this.debounceTimer) {
+		if (this.debounceTimer !== null) {
 			window.clearTimeout(this.debounceTimer);
 		}
 
 		this.debounceTimer = window.setTimeout(() => {
-			this.convertReferenceInCurrentLine(editor);
+			this.debounceTimer = null;
+			convertReferenceInCurrentLine(editor, aliasesData.ja, this.settings);
 		}, this.settings.debounceMs);
-	}
-
-	private convertReferenceInCurrentLine(editor: Editor) {
-		const cursor = editor.getCursor();
-		const lineText = editor.getLine(cursor.line);
-
-		// Use the Japanese aliases for now as per data/aliases.json structure
-		const aliases = aliasesData.ja;
-
-		// Phase 1: Only convert the first reference in the current line
-		// To allow for multiple references in the future, we could loop.
-		// But for now, we follow Phase 1 requirement.
-
-		// We need to scan the line. parseSingleReference currently expects to start at the book name.
-		// So we need to find where the book name might start.
-
-		// Simple approach for Phase 1: Try to parse starting from each position in the line
-		// or use a more efficient way to find potential book names.
-		for (let i = 0; i < lineText.length; i++) {
-			const ref = parseSingleReference(lineText.substring(i), aliases, i);
-			if (ref) {
-				const markdownLink = referenceToMarkdown(ref, this.settings);
-
-				// Replace the original text with the markdown link
-				const from = { line: cursor.line, ch: ref.startIndex };
-				const to = { line: cursor.line, ch: ref.endIndex };
-
-				editor.replaceRange(markdownLink, from, to);
-
-				// For Phase 1, we stop after the first conversion
-				break;
-			}
-		}
 	}
 
 	async loadSettings() {
