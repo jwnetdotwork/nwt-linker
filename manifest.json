@@ -1,7 +1,7 @@
 {
 	"id": "obsidian-nwt-linker",
 	"name": "NWT Linker",
-	"version": "1.0.0",
+	"version": "0.0.1",
 	"minAppVersion": "1.0.0",
 	"description": "Links NWT Scripture references to jw.org.",
 	"author": "JW Network",

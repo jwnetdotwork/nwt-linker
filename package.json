@@ -1,6 +1,6 @@
 {
 	"name": "nwt-linker",
-	"version": "1.0.0",
+	"version": "0.0.1",
 	"description": "NWT Scripture reference linker for Obsidian",
 	"main": "main.js",
 	"type": "module",
