@@ -1,6 +1,10 @@
-# Obsidian Scripture Linker 仕様書
+# Obsidian NWT Linker 仕様書
 
 ## 1. 概要
+
+### 1.0 プラグイン名など
+プラグイン名: nwt-linker
+プラグインID: obsidian-nwt-linker
 
 ### 1.1 プラグインの目的
 
