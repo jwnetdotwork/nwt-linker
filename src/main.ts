@@ -16,6 +16,7 @@ export default class MyPlugin extends Plugin {
 	settings!: MyPluginSettings;
 	private debounceTimer: number | null = null;
 	private isComposing = false;
+	private composingEditor: Editor | null = null;
 	private lastCompositionEndAt = 0;
 
 	async onload() {
@@ -26,15 +27,26 @@ export default class MyPlugin extends Plugin {
 		this.registerEvent(
 			this.app.workspace.on('editor-change', (editor: Editor, info: MarkdownView | MarkdownFileInfo) => {
 				if (!(info instanceof MarkdownView)) return;
+				if (this.isComposing) {
+					this.composingEditor = editor;
+				}
 				this.handleEditorChange(editor);
 			})
 		);
 
 		this.registerDomEvent(window, 'compositionstart', () => {
 			this.isComposing = true;
-			if (this.debounceTimer !== null) {
+			const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
+			const activeEditor = activeView?.editor;
+
+			if (activeEditor && this.debounceTimer !== null && this.composingEditor === activeEditor) {
 				window.clearTimeout(this.debounceTimer);
 				this.debounceTimer = null;
+				this.composingEditor = null;
+			}
+
+			if (activeEditor) {
+				this.composingEditor = activeEditor;
 			}
 		});
 
@@ -47,9 +59,9 @@ export default class MyPlugin extends Plugin {
 			this.lastCompositionEndAt = Date.now();
 
 			// After composition ends, trigger a normal debounce
-			const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
-			if (activeView) {
-				this.handleEditorChange(activeView.editor);
+			if (this.composingEditor) {
+				this.handleEditorChange(this.composingEditor);
+				this.composingEditor = null;
 			}
 		});
 	}
@@ -65,6 +77,8 @@ export default class MyPlugin extends Plugin {
 
 		if (this.debounceTimer !== null) {
 			window.clearTimeout(this.debounceTimer);
+			this.debounceTimer = null;
+			this.composingEditor = null;
 		}
 
 		this.debounceTimer = window.setTimeout(() => {
