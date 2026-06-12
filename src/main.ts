@@ -10,7 +10,7 @@ import {
 	SampleSettingTab,
 } from './settings';
 import { convertReferenceInCurrentLine } from './core/editor-converter';
-import aliasesData from '../data/aliases.json';
+import { ensureDefaultAliases } from './core/settings-utils';
 
 export default class MyPlugin extends Plugin {
 	settings!: MyPluginSettings;
@@ -55,8 +55,7 @@ export default class MyPlugin extends Plugin {
 			(await this.loadData()) as Partial<MyPluginSettings>,
 		);
 
-		if (this.settings.aliases === undefined) {
-			this.settings.aliases = { ...aliasesData.ja };
+		if (ensureDefaultAliases(this.settings)) {
 			await this.saveSettings();
 		}
 	}
