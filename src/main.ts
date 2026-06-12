@@ -15,6 +15,9 @@ import { ensureDefaultAliases } from './core/settings-utils';
 export default class MyPlugin extends Plugin {
 	settings!: MyPluginSettings;
 	private debounceTimer: number | null = null;
+	private isComposing = false;
+	private composingEditor: Editor | null = null;
+	private lastCompositionEndAt = 0;
 
 	async onload() {
 		await this.loadSettings();
@@ -24,9 +27,43 @@ export default class MyPlugin extends Plugin {
 		this.registerEvent(
 			this.app.workspace.on('editor-change', (editor: Editor, info: MarkdownView | MarkdownFileInfo) => {
 				if (!(info instanceof MarkdownView)) return;
+				if (this.isComposing) {
+					this.composingEditor = editor;
+				}
 				this.handleEditorChange(editor);
 			})
 		);
+
+		this.registerDomEvent(window, 'compositionstart', () => {
+			this.isComposing = true;
+			const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
+			const activeEditor = activeView?.editor;
+
+			if (activeEditor && this.debounceTimer !== null && this.composingEditor === activeEditor) {
+				window.clearTimeout(this.debounceTimer);
+				this.debounceTimer = null;
+				this.composingEditor = null;
+			}
+
+			if (activeEditor) {
+				this.composingEditor = activeEditor;
+			}
+		});
+
+		this.registerDomEvent(window, 'compositionupdate', () => {
+			this.isComposing = true;
+		});
+
+		this.registerDomEvent(window, 'compositionend', () => {
+			this.isComposing = false;
+			this.lastCompositionEndAt = Date.now();
+
+			// After composition ends, trigger a normal debounce
+			if (this.composingEditor) {
+				this.handleEditorChange(this.composingEditor);
+				this.composingEditor = null;
+			}
+		});
 	}
 
 	onunload() {
@@ -36,14 +73,27 @@ export default class MyPlugin extends Plugin {
 	}
 
 	private handleEditorChange(editor: Editor) {
-		if (!this.settings.enabled) return;
+		if (!this.settings.enabled || this.isComposing) return;
 
 		if (this.debounceTimer !== null) {
 			window.clearTimeout(this.debounceTimer);
+			this.debounceTimer = null;
+			this.composingEditor = null;
 		}
 
 		this.debounceTimer = window.setTimeout(() => {
 			this.debounceTimer = null;
+
+			// Final check before conversion
+			if (this.isComposing) return;
+
+			const now = Date.now();
+			if (now - this.lastCompositionEndAt < 200) {
+				// Re-schedule if within safety buffer
+				this.handleEditorChange(editor);
+				return;
+			}
+
 			convertReferenceInCurrentLine(editor, this.settings.aliases, this.settings);
 		}, this.settings.debounceMs);
 	}
