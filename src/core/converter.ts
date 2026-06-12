@@ -42,7 +42,6 @@ export function convertToMarkdownLink(
 
 /**
  * Converts a whole scripture reference into Markdown.
- * Phase 1 version: handles only the first part as part of the whole reference.
  */
 export function referenceToMarkdown(
 	ref: ScriptureReference,
@@ -52,15 +51,15 @@ export function referenceToMarkdown(
 		throw new Error('ScriptureReference must have at least one part');
 	}
 
-	// In Phase 1, we only have one part, and the originalText of the reference
-	// is the whole thing (e.g., "テトス1:14").
-	// The requirement says: "表示テキストには元の入力文字列を使用する"
+	// For a single part, we might want to ensure the originalText of the reference is used
+	// if it's the Phase 1 style "テトス1:14".
+	// In Phase 3, parts[0].originalText for "啓示21:3" IS "啓示21:3".
+	// So map works fine for both phases.
 
-	// For multiple parts (Phase 3), we'll need more complex logic.
-	// For now, we take the first verse to generate the Bible ID.
-	const firstPart = ref.parts[0]!;
-	const bibleId = generateBibleId(ref.bookNumber, ref.chapter, firstPart.verse);
-	const url = generateUrl(bibleId, settings);
-
-	return `[${ref.originalText}](${url})`;
+	return ref.parts
+		.map((part) => {
+			const link = convertToMarkdownLink(part, ref.bookNumber, ref.chapter, settings);
+			return (part.precedingText || '') + link;
+		})
+		.join('');
 }
