@@ -1,35 +1,88 @@
 # NWT Linker
 
-Links New World Translation Scripture references to jw.org.
+NWT Linker is an Obsidian community plugin that turns Bible references into links that open the New World Translation in JW Library or on jw.org.
 
-## How to use
+Type a Bible book name and chapter/verse reference in a note, and the plugin converts it into a link that opens the corresponding passage in the New World Translation.
 
-- Clone this repo.
-- Make sure your NodeJS is at least v18 (`node --version`).
-- `npm i` to install dependencies.
-- `npm run dev` to start compilation in watch mode.
+## Features
 
-## Manually installing the plugin
+- Automatically links Bible references as you type
+- Generates jw.org links for the New World Translation
+- Opens JW Library when it is available, otherwise falls back to jw.org
+- Supports configurable book name aliases
+- Add, edit, delete, import, and export aliases as JSON
+- Lets you configure locale, publication, and the URL template
+- Uses a short delay after typing stops, so it stays out of the way while you edit
 
-- Copy over `main.js`, `styles.css`, `manifest.json` to your vault `VaultFolder/.obsidian/plugins/obsidian-nwt-linker/`.
+## Usage
 
-## Releasing new releases
+Enter a Bible reference like this:
 
-- Set the new version number in `.env` (e.g., `NWT_LINKER_VERSION=1.0.1`).
-- Run `./release.sh`. **Note:** Running this script is an explicit opt-in to trigger a cloud-based release flow. This will:
-    - Update `package.json`, `manifest.json`, and `versions.json`.
-    - Create a git commit and a tag (without `v` prefix).
-    - Push the changes and tag to GitHub.
-- Pushing to GitHub triggers the [GitHub Actions release workflow](.github/workflows/release.yml), which executes in an external cloud environment.
-    - **Data Sent:** Repository contents, commit metadata, tags, and generated build artifacts.
-    - **Risks:** External cloud execution, potential exposure of secrets if not properly configured, and auditability of all pushed data.
-    - **Opt-out:** To avoid triggering the cloud workflow, do not run `./release.sh` or push tags to GitHub; instead, follow manual installation steps.
+```text
+Titus1:14
+```
 
-## Improve code quality with eslint
+It will be converted into a link such as:
 
-- Run `npm run lint` to check for common bugs and code issues.
-- A GitHub action is preconfigured to automatically lint every commit on all branches.
+```md
+[Titus 1:14](https://www.jw.org/finder?srcid=jwlshare&wtlocale=E&prefer=lang&bible=56001014&pub=nwtsty)
+```
 
-## API Documentation
+It also works when there is a space between the book name and the chapter number:
 
-See https://docs.obsidian.md
+```text
+Titus 1:14
+```
+
+## Book name aliases
+
+You can define aliases for each Bible book.
+
+For example, you can register alternate names such as:
+
+- `Titus`
+- `Tit`
+- `John`
+- `Jn`
+
+This lets you convert references using the shorthand you already prefer.
+
+From **Book name aliases** in the settings, you can:
+
+- Add aliases
+- Change the associated book number for an existing alias
+- Delete aliases
+- Import or export aliases as JSON
+- Reset to the default Japanese aliases
+
+## Settings
+
+You can adjust the following options in the settings screen:
+
+- Enable or disable conversion
+- Delay before conversion after typing stops
+- Locale for the publication to open
+- Publication to open
+- URL template
+
+The default values should work fine for Japanese usage.
+
+## Installation
+
+### Manual installation
+
+1. Open the GitHub [Releases page](https://github.com/jwnetdotwork/nwt-linker/releases) and download `main.js` and `manifest.json` from the latest release.
+2. Place those two files in the following folder in your vault:
+
+```text
+<Vault>/.obsidian/plugins/obsidian-nwt-linker/
+```
+
+3. Reload Obsidian and enable NWT Linker from **Settings → Community plugins**.
+
+## Notes
+
+- This is an Obsidian community plugin.
+- It works offline by default.
+- It follows jw.org usage rules and does not scrape content.
+- Reference conversion happens entirely inside your notes.
