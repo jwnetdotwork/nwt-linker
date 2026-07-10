@@ -19,7 +19,7 @@
 ```text
 .
 ├── data/
-│   ├── aliases.json
+│   ├── aliases-master.json
 │   └── verse-map.json
 ├── docs/
 │   ├── ARCHITECTURE.md
@@ -47,8 +47,8 @@
 - `src/settings.ts`
   - 設定型、デフォルト値、設定タブUI
   - 将来的に設定が増えても、まずここを起点に拡張する
-- `data/aliases.json`
-  - 書名エイリアスのデフォルトテーブル
+- `data/aliases-master.json`
+  - 複数言語の書名エイリアスを格納するマスターテーブル
 - `data/verse-map.json`
   - 章・節の検証に使う静的データ
 - `docs/spec.md`
@@ -71,24 +71,27 @@
 - エディタ操作やUIはロジック層から切り離す
 - 共有定数や型は別ファイルに逃がす
 
-### 追加候補
+### 実装済みの構成
+
+すでに設計通り、以下のモジュール群に整理され、実装が完了しています：
+
+- `src/core/`
+  - `normalization.ts` (正規化)
+  - `aliases.ts` (エイリアス最長一致検索)
+  - `aliases-presets.ts` (プリセットデータ読み込み層)
+  - `parser.ts` (聖句解析・検証)
+  - `converter.ts` / `editor-converter.ts` (Markdown変換、エディタ操作)
+  - `settings-utils.ts` (設定デフォルト制御)
+  - `types.ts` (共通型定義)
+
+### 追加候補（将来の候補）
 
 以下は現時点では存在しない将来候補で、必要になったら導入する。
 
-- `src/core/`
-  - `normalize.ts`
-  - `aliases.ts`
-  - `parser.ts`
-  - `bible-id.ts`
-  - `url-builder.ts`
-  - `converter.ts`
 - `src/ui/`
-  - `setting-tab.ts`
-  - エディタ周辺のUIが必要になった場合の部品
-- `src/types.ts`
-  - 共通型定義
+  - `setting-tab.ts` (設定画面をさらに別コンポーネント化する場合の部品)
 - `tests/`
-  - ロジック層の単体テスト
+  - さらなる自動テスト、統合テストの追加拡張
 
 この段階では、`plugin.ts` や `editor-plugin.ts` のような分割案を前提にしない。もし本当に必要になったら、実ファイルを作った時点でこの文書を更新する。
 
@@ -96,6 +99,7 @@
 
 ## 4. Obsidian プラグインとしての実装原則
 
+- データ取得元を一元化する（マスターデータやプリセットを介して一貫したデータ提供を行う）
 - `src/main.ts` に業務ロジックを溜めない
 - コマンド ID は安定させ、後から変更しない
 - `this.register*` 系を使ってイベントや interval を必ず解放する

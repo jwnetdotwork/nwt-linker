@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { parseSingleReference } from '../src/core/parser';
-import aliasesData from '../data/aliases.json';
+import { getPreset } from '../src/core/aliases-presets';
 
-const aliases = aliasesData.ja;
+const aliases = getPreset('J')?.aliases ?? {};
 
 describe('parseSingleReference - Phase 3', () => {
 	it('should parse multiple verses', () => {

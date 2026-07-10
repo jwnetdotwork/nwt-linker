@@ -16,6 +16,14 @@ export interface ScriptureReference {
 	endIndex: number;
 }
 
+export interface LocalePreset {
+	name: string;
+	iso: string;
+	source: 'nwt' | 'community' | 'manual';
+	note?: string;
+	aliases: Record<string, number>;
+}
+
 export interface PluginSettings {
 	enabled: boolean;
 	debounceMs: number;
@@ -23,4 +31,6 @@ export interface PluginSettings {
 	pub: string;
 	urlTemplate: string;
 	aliases: Record<string, number>;
+	/** The wtlocale of the preset loaded directly preceding, or null if custom edited. */
+	loadedPreset: string | null;
 }

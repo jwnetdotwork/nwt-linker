@@ -8,5 +8,6 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 	wtlocale: 'J',
 	pub: 'nwtsty',
 	urlTemplate: DEFAULT_URL_TEMPLATE,
-	aliases: {}, // This will be populated from data/aliases.json at runtime or during initialization
+	aliases: {}, // This will be populated from data/aliases-master.json or loaded presets at runtime or during initialization
+	loadedPreset: null,
 };

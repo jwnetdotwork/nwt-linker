@@ -1,52 +1,18 @@
-import { App, Modal, Notice, PluginSettingTab, Setting } from 'obsidian';
+import { App, Notice, PluginSettingTab, Setting } from 'obsidian';
 import MyPlugin from './main';
 import { PluginSettings } from './core/types';
 import { DEFAULT_SETTINGS } from './core/constants';
-import aliasesData from '../data/aliases.json';
+import { getPreset } from './core/aliases-presets';
+import { ConfirmModal } from './ui/confirm-modal';
 
 export { DEFAULT_SETTINGS };
 export type MyPluginSettings = PluginSettings;
-
-class ConfirmModal extends Modal {
-	constructor(
-		app: App,
-		private message: string,
-		private onConfirm: () => void,
-	) {
-		super(app);
-	}
-
-	onOpen() {
-		const { contentEl } = this;
-		contentEl.createEl('h3', { text: 'Confirm' });
-		contentEl.createEl('p', { text: this.message });
-
-		const buttonContainer = contentEl.createDiv();
-		buttonContainer.style.display = 'flex';
-		buttonContainer.style.justifyContent = 'flex-end';
-		buttonContainer.style.gap = '10px';
-		buttonContainer.style.marginTop = '20px';
-
-		const cancelBtn = buttonContainer.createEl('button', { text: 'Cancel' });
-		cancelBtn.onclick = () => this.close();
-
-		const confirmBtn = buttonContainer.createEl('button', { text: 'Confirm', cls: 'mod-warning' });
-		confirmBtn.onclick = () => {
-			this.onConfirm();
-			this.close();
-		};
-	}
-
-	onClose() {
-		const { contentEl } = this;
-		contentEl.empty();
-	}
-}
 
 export class SampleSettingTab extends PluginSettingTab {
 	plugin: MyPlugin;
 	private saveDebounceTimer: number | null = null;
 	private jsonTextArea: HTMLTextAreaElement | null = null;
+	private updateLoadBtnLabel: (() => void) | null = null;
 
 	constructor(app: App, plugin: MyPlugin) {
 		super(app, plugin);
@@ -76,23 +42,33 @@ export class SampleSettingTab extends PluginSettingTab {
 
 		containerEl.empty();
 
+		this.renderGeneralSettings(containerEl);
+		this.renderAliasSettings(containerEl);
+		this.renderImportExport(containerEl);
+
+		containerEl.scrollTop = scrollTop;
+	}
+
+	private renderGeneralSettings(containerEl: HTMLElement): void {
 		new Setting(containerEl)
 			.setName('Enabled')
 			.setDesc('Enable automatic scripture link conversion')
 			.addToggle((toggle) =>
 				toggle
 					.setValue(this.plugin.settings.enabled)
-					.onChange(async (value) => {
-						const prev = this.plugin.settings.enabled;
-						try {
-							this.plugin.settings.enabled = value;
-							await this.plugin.saveSettings();
-						} catch (error) {
-							this.plugin.settings.enabled = prev;
-							toggle.setValue(prev);
-							console.error(error);
-							new Notice('Failed to save setting: ' + (error instanceof Error ? error.message : String(error)));
-						}
+					.onChange((value) => {
+						void (async () => {
+							const prev = this.plugin.settings.enabled;
+							try {
+								this.plugin.settings.enabled = value;
+								await this.plugin.saveSettings();
+							} catch (error) {
+								this.plugin.settings.enabled = prev;
+								toggle.setValue(prev);
+								console.error(error);
+								new Notice('Failed to save setting: ' + (error instanceof Error ? error.message : String(error)));
+							}
+						})();
 					}),
 			);
 
@@ -103,27 +79,24 @@ export class SampleSettingTab extends PluginSettingTab {
 				text
 					.setPlaceholder('1000')
 					.setValue(this.plugin.settings.debounceMs.toString())
-					.onChange(async (value) => {
-						const numValue = parseInt(value, 10);
-						if (isNaN(numValue) || numValue < 100) {
-							// For invalid input, we don't save but we also don't necessarily want to
-							// revert the text immediately as the user might be typing.
-							// However, per requirements "fallback to previous valid setting if input is [invalid]"
-							// We can use the blur event or just wait for a valid value.
-							// To keep it simple and reactive:
-							return;
-						}
+					.onChange((value) => {
+						void (async () => {
+							const numValue = parseInt(value, 10);
+							if (isNaN(numValue) || numValue < 100) {
+								return;
+							}
 
-						const prev = this.plugin.settings.debounceMs;
-						try {
-							this.plugin.settings.debounceMs = numValue;
-							await this.plugin.saveSettings();
-						} catch (error) {
-							this.plugin.settings.debounceMs = prev;
-							text.setValue(prev.toString());
-							console.error(error);
-							new Notice('Failed to save setting: ' + (error instanceof Error ? error.message : String(error)));
-						}
+							const prev = this.plugin.settings.debounceMs;
+							try {
+								this.plugin.settings.debounceMs = numValue;
+								await this.plugin.saveSettings();
+							} catch (error) {
+								this.plugin.settings.debounceMs = prev;
+								text.setValue(prev.toString());
+								console.error(error);
+								new Notice('Failed to save setting: ' + (error instanceof Error ? error.message : String(error)));
+							}
+						})();
 					}),
 			);
 
@@ -133,17 +106,23 @@ export class SampleSettingTab extends PluginSettingTab {
 			.addText((text) =>
 				text
 					.setValue(this.plugin.settings.wtlocale)
-					.onChange(async (value) => {
-						const prev = this.plugin.settings.wtlocale;
-						try {
-							this.plugin.settings.wtlocale = value;
-							await this.plugin.saveSettings();
-						} catch (error) {
-							this.plugin.settings.wtlocale = prev;
-							text.setValue(prev);
-							console.error(error);
-							new Notice('Failed to save setting: ' + (error instanceof Error ? error.message : String(error)));
-						}
+					.onChange((value) => {
+						void (async () => {
+							const normalized = value.trim().toUpperCase();
+							const prev = this.plugin.settings.wtlocale;
+							try {
+								this.plugin.settings.wtlocale = normalized;
+								await this.plugin.saveSettings();
+								if (this.updateLoadBtnLabel) {
+									this.updateLoadBtnLabel();
+								}
+							} catch (error) {
+								this.plugin.settings.wtlocale = prev;
+								text.setValue(prev);
+								console.error(error);
+								new Notice('Failed to save setting: ' + (error instanceof Error ? error.message : String(error)));
+							}
+						})();
 					}),
 			);
 
@@ -153,17 +132,19 @@ export class SampleSettingTab extends PluginSettingTab {
 			.addText((text) =>
 				text
 					.setValue(this.plugin.settings.pub)
-					.onChange(async (value) => {
-						const prev = this.plugin.settings.pub;
-						try {
-							this.plugin.settings.pub = value;
-							await this.plugin.saveSettings();
-						} catch (error) {
-							this.plugin.settings.pub = prev;
-							text.setValue(prev);
-							console.error(error);
-							new Notice('Failed to save setting: ' + (error instanceof Error ? error.message : String(error)));
-						}
+					.onChange((value) => {
+						void (async () => {
+							const prev = this.plugin.settings.pub;
+							try {
+								this.plugin.settings.pub = value;
+								await this.plugin.saveSettings();
+							} catch (error) {
+								this.plugin.settings.pub = prev;
+								text.setValue(prev);
+								console.error(error);
+								new Notice('Failed to save setting: ' + (error instanceof Error ? error.message : String(error)));
+							}
+						})();
 					}),
 			);
 
@@ -173,31 +154,50 @@ export class SampleSettingTab extends PluginSettingTab {
 			.addText((text) =>
 				text
 					.setValue(this.plugin.settings.urlTemplate)
-					.onChange(async (value) => {
-						// Validation
-						if (!value.includes('{{bible}}')) {
-							return;
-						}
-						try {
-							new URL(value.replace('{{bible}}', '01001001').replace('{{wtlocale}}', 'J').replace('{{pub}}', 'nwtsty'));
-						} catch {
-							return;
-						}
+					.onChange((value) => {
+						void (async () => {
+							// Validation
+							if (!value.includes('{{bible}}')) {
+								return;
+							}
+							try {
+								new URL(value.replace('{{bible}}', '01001001').replace('{{wtlocale}}', 'J').replace('{{pub}}', 'nwtsty'));
+							} catch {
+								return;
+							}
 
-						const prev = this.plugin.settings.urlTemplate;
-						try {
-							this.plugin.settings.urlTemplate = value;
-							await this.plugin.saveSettings();
-						} catch (error) {
-							this.plugin.settings.urlTemplate = prev;
-							text.setValue(prev);
-							console.error(error);
-							new Notice('Failed to save setting: ' + (error instanceof Error ? error.message : String(error)));
-						}
+							const prev = this.plugin.settings.urlTemplate;
+							try {
+								this.plugin.settings.urlTemplate = value;
+								await this.plugin.saveSettings();
+							} catch (error) {
+								this.plugin.settings.urlTemplate = prev;
+								text.setValue(prev);
+								console.error(error);
+								new Notice('Failed to save setting: ' + (error instanceof Error ? error.message : String(error)));
+							}
+						})();
 					}),
 			);
+	}
 
+	private renderAliasSettings(containerEl: HTMLElement): void {
 		containerEl.createEl('h3', { text: 'Book name aliases' });
+
+		// Preset Status Display under the Book name aliases header
+		const statusEl = containerEl.createEl('p');
+		statusEl.addClass('setting-item-description');
+		const updateStatusText = () => {
+			const loadedPreset = this.plugin.settings.loadedPreset;
+			if (loadedPreset !== null) {
+				const preset = getPreset(loadedPreset);
+				const presetName = preset ? preset.name : loadedPreset;
+				statusEl.setText(`Currently loaded: ${presetName} (${loadedPreset})`);
+			} else {
+				statusEl.setText('Currently: custom (manually edited)');
+			}
+		};
+		updateStatusText();
 
 		// Add new alias
 		const addAliasSetting = new Setting(containerEl)
@@ -226,18 +226,33 @@ export class SampleSettingTab extends PluginSettingTab {
 			btn
 				.setButtonText('Add')
 				.setCta()
-				.onClick(async () => {
-					if (!newAlias) {
-						new Notice('Alias cannot be empty');
-						return;
-					}
-					if (this.plugin.settings.aliases[newAlias]) {
-						new Notice('Alias already exists');
-						return;
-					}
-					this.plugin.settings.aliases[newAlias] = newBookNum;
-					await this.plugin.saveSettings();
-					this.display();
+				.onClick(() => {
+					void (async () => {
+						if (!newAlias) {
+							new Notice('Alias cannot be empty');
+							return;
+						}
+						if (this.plugin.settings.aliases[newAlias]) {
+							new Notice('Alias already exists');
+							return;
+						}
+
+						const prevAliases = { ...this.plugin.settings.aliases };
+						const prevLoadedPreset = this.plugin.settings.loadedPreset;
+
+						try {
+							this.plugin.settings.aliases[newAlias] = newBookNum;
+							this.plugin.settings.loadedPreset = null; // Set custom status
+							await this.plugin.saveSettings();
+							this.display();
+						} catch (error) {
+							// Rollback
+							this.plugin.settings.aliases = prevAliases;
+							this.plugin.settings.loadedPreset = prevLoadedPreset;
+							console.error(error);
+							new Notice('Failed to save alias: ' + (error instanceof Error ? error.message : String(error)));
+						}
+					})();
 				}),
 		);
 
@@ -259,7 +274,10 @@ export class SampleSettingTab extends PluginSettingTab {
 						const num = parseInt(value, 10);
 						if (!isNaN(num) && num >= 1 && num <= 66) {
 							this.plugin.settings.aliases[alias] = num;
-							this.debouncedSave();
+							this.plugin.settings.loadedPreset = null; // Set custom status
+							void this.debouncedSave();
+							// Update status text in real time
+							updateStatusText();
 						}
 					});
 				text.inputEl.style.width = '60px';
@@ -270,15 +288,30 @@ export class SampleSettingTab extends PluginSettingTab {
 					.setIcon('trash')
 					.setWarning()
 					.setTooltip('Delete alias')
-					.onClick(async () => {
-						delete this.plugin.settings.aliases[alias];
-						await this.plugin.saveSettings();
-						this.display();
+					.onClick(() => {
+						void (async () => {
+							const prevAliases = { ...this.plugin.settings.aliases };
+							const prevLoadedPreset = this.plugin.settings.loadedPreset;
+
+							try {
+								delete this.plugin.settings.aliases[alias];
+								this.plugin.settings.loadedPreset = null; // Set custom status
+								await this.plugin.saveSettings();
+								this.display();
+							} catch (error) {
+								// Rollback
+								this.plugin.settings.aliases = prevAliases;
+								this.plugin.settings.loadedPreset = prevLoadedPreset;
+								console.error(error);
+								new Notice('Failed to delete alias: ' + (error instanceof Error ? error.message : String(error)));
+							}
+						})();
 					}),
 			);
 		}
+	}
 
-		// JSON Import/Export
+	private renderImportExport(containerEl: HTMLElement): void {
 		containerEl.createEl('h3', { text: 'Import/export aliases' });
 		const jsonDesc = containerEl.createEl('p', {
 			text: 'Import or export your aliases as JSON. When importing, it will overwrite your current aliases.',
@@ -298,38 +331,90 @@ export class SampleSettingTab extends PluginSettingTab {
 		buttonContainer.style.marginTop = '10px';
 
 		const importBtn = buttonContainer.createEl('button', { text: 'Import JSON' });
-		importBtn.addEventListener('click', async () => {
-			try {
-				const jsonValue = this.jsonTextArea?.value ?? '{}';
-				const imported = JSON.parse(jsonValue);
-				if (typeof imported !== 'object' || imported === null) {
-					throw new Error('Invalid JSON format: must be an object');
-				}
-				// Basic validation
-				for (const [key, value] of Object.entries(imported)) {
-					if (typeof key !== 'string' || typeof value !== 'number' || value < 1 || value > 66) {
-						throw new Error(`Invalid entry: ${key}: ${value}. Book number must be 1-66.`);
+		importBtn.addEventListener('click', () => {
+			void (async () => {
+				const prevAliases = { ...this.plugin.settings.aliases };
+				const prevLoadedPreset = this.plugin.settings.loadedPreset;
+
+				try {
+					const jsonValue = this.jsonTextArea?.value ?? '{}';
+					const imported = JSON.parse(jsonValue) as Record<string, unknown>;
+					if (typeof imported !== 'object' || imported === null || Array.isArray(imported)) {
+						throw new Error('Invalid JSON format: must be an object');
 					}
+					// Basic validation
+					for (const [key, value] of Object.entries(imported)) {
+						if (typeof value !== 'number' || value < 1 || value > 66) {
+							throw new Error(`Invalid entry: ${key}: ${String(value)}. Book number must be 1-66.`);
+						}
+					}
+					this.plugin.settings.aliases = imported as Record<string, number>;
+					this.plugin.settings.loadedPreset = null; // Set custom status
+					await this.plugin.saveSettings();
+					new Notice('Aliases imported successfully');
+					this.display();
+				} catch (e) {
+					// Rollback
+					this.plugin.settings.aliases = prevAliases;
+					this.plugin.settings.loadedPreset = prevLoadedPreset;
+					new Notice('Failed to import JSON: ' + (e instanceof Error ? e.message : String(e)));
 				}
-				this.plugin.settings.aliases = imported;
-				await this.plugin.saveSettings();
-				new Notice('Aliases imported successfully');
-				this.display();
-			} catch (e) {
-				new Notice('Failed to import JSON: ' + (e instanceof Error ? e.message : String(e)));
-			}
+			})();
 		});
 
-		const resetBtn = buttonContainer.createEl('button', { text: 'Reset to Defaults (JP)' });
-		resetBtn.addEventListener('click', () => {
-			new ConfirmModal(this.app, 'Are you sure you want to reset all aliases to Japanese defaults?', async () => {
-				this.plugin.settings.aliases = { ...aliasesData.ja };
-				await this.plugin.saveSettings();
-				new Notice('Aliases reset to defaults');
-				this.display();
-			}).open();
-		});
+		// Dynamic Button replacement for defaults reset
+		const loadBtn = buttonContainer.createEl('button');
+		this.updateLoadBtnLabel = () => {
+			const currentLocale = this.plugin.settings.wtlocale;
+			const preset = getPreset(currentLocale);
+			const label = preset
+				? `Load aliases (${currentLocale} — ${preset.name})`
+				: 'Load aliases for current WT Locale';
+			loadBtn.setText(label);
+		};
+		this.updateLoadBtnLabel();
 
-		containerEl.scrollTop = scrollTop;
+		loadBtn.addEventListener('click', () => {
+			void (async () => {
+				const currentLocale = this.plugin.settings.wtlocale;
+				const preset = getPreset(currentLocale);
+				if (!preset) {
+					new Notice(`No preset available for locale "${currentLocale}". Add it to data/aliases-master.json.`);
+					return;
+				}
+
+				const loadPresetAction = async () => {
+					const prevAliases = { ...this.plugin.settings.aliases };
+					const prevLoadedPreset = this.plugin.settings.loadedPreset;
+
+					try {
+						this.plugin.settings.aliases = JSON.parse(JSON.stringify(preset.aliases)) as Record<string, number>;
+						this.plugin.settings.loadedPreset = currentLocale;
+						await this.plugin.saveSettings();
+						new Notice(`Aliases loaded for ${preset.name}`);
+						this.display();
+					} catch (error) {
+						// Rollback
+						this.plugin.settings.aliases = prevAliases;
+						this.plugin.settings.loadedPreset = prevLoadedPreset;
+						console.error(error);
+						new Notice('Failed to load preset: ' + (error instanceof Error ? error.message : String(error)));
+					}
+				};
+
+				if (this.plugin.settings.loadedPreset === currentLocale) {
+					// Skip confirmation and load instantly
+					await loadPresetAction();
+				} else {
+					new ConfirmModal(
+						this.app,
+						`Replace current aliases with the "${preset.name}" (${currentLocale}) preset? This will discard any custom aliases you've added.`,
+						() => {
+							void loadPresetAction();
+						}
+					).open();
+				}
+			})();
+		});
 	}
 }
