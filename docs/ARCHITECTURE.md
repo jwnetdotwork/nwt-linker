@@ -71,25 +71,27 @@
 - エディタ操作やUIはロジック層から切り離す
 - 共有定数や型は別ファイルに逃がす
 
-### 追加候補
+### 実装済みの構成
+
+すでに設計通り、以下のモジュール群に整理され、実装が完了しています：
+
+- `src/core/`
+  - `normalization.ts` (正規化)
+  - `aliases.ts` (エイリアス最長一致検索)
+  - `aliases-presets.ts` (プリセットデータ読み込み層)
+  - `parser.ts` (聖句解析・検証)
+  - `converter.ts` / `editor-converter.ts` (Markdown変換、エディタ操作)
+  - `settings-utils.ts` (設定デフォルト制御)
+  - `types.ts` (共通型定義)
+
+### 追加候補（将来の候補）
 
 以下は現時点では存在しない将来候補で、必要になったら導入する。
 
-- `src/core/`
-  - `normalize.ts`
-  - `aliases.ts`
-  - `aliases-presets.ts` (プリセットデータ読み込み層)
-  - `parser.ts`
-  - `bible-id.ts`
-  - `url-builder.ts`
-  - `converter.ts`
 - `src/ui/`
-  - `setting-tab.ts`
-  - エディタ周辺のUIが必要になった場合の部品
-- `src/types.ts`
-  - 共通型定義
+  - `setting-tab.ts` (設定画面をさらに別コンポーネント化する場合の部品)
 - `tests/`
-  - ロジック層の単体テスト
+  - さらなる自動テスト、統合テストの追加拡張
 
 この段階では、`plugin.ts` や `editor-plugin.ts` のような分割案を前提にしない。もし本当に必要になったら、実ファイルを作った時点でこの文書を更新する。
 

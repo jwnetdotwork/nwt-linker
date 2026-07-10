@@ -30,6 +30,18 @@ describe('ensureDefaultAliases', () => {
 		expect(settings.loadedPreset).toBe('J');
 	});
 
+	it('should set loadedPreset to fallback J if requested wtlocale does not exist', () => {
+		const settings: Partial<PluginSettings> = {
+			aliases: {},
+			wtlocale: 'UNKNOWN',
+			loadedPreset: null
+		};
+		const modified = ensureDefaultAliases(settings as PluginSettings);
+		expect(modified).toBe(true);
+		expect(settings.aliases).toEqual(jaPreset?.aliases);
+		expect(settings.loadedPreset).toBe('J');
+	});
+
 	it('should not modify populated aliases', () => {
 		const initialAliases = { 'Custom': 1 };
 		const settings: Partial<PluginSettings> = {

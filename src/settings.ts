@@ -1,52 +1,18 @@
-import { App, Modal, Notice, PluginSettingTab, Setting } from 'obsidian';
+import { App, Notice, PluginSettingTab, Setting } from 'obsidian';
 import MyPlugin from './main';
 import { PluginSettings } from './core/types';
 import { DEFAULT_SETTINGS } from './core/constants';
 import { getPreset } from './core/aliases-presets';
+import { ConfirmModal } from './ui/confirm-modal';
 
 export { DEFAULT_SETTINGS };
 export type MyPluginSettings = PluginSettings;
-
-class ConfirmModal extends Modal {
-	constructor(
-		app: App,
-		private message: string,
-		private onConfirm: () => void,
-	) {
-		super(app);
-	}
-
-	onOpen() {
-		const { contentEl } = this;
-		contentEl.createEl('h3', { text: 'Confirm' });
-		contentEl.createEl('p', { text: this.message });
-
-		const buttonContainer = contentEl.createDiv();
-		buttonContainer.style.display = 'flex';
-		buttonContainer.style.justifyContent = 'flex-end';
-		buttonContainer.style.gap = '10px';
-		buttonContainer.style.marginTop = '20px';
-
-		const cancelBtn = buttonContainer.createEl('button', { text: 'Cancel' });
-		cancelBtn.onclick = () => this.close();
-
-		const confirmBtn = buttonContainer.createEl('button', { text: 'Confirm', cls: 'mod-warning' });
-		confirmBtn.onclick = () => {
-			this.onConfirm();
-			this.close();
-		};
-	}
-
-	onClose() {
-		const { contentEl } = this;
-		contentEl.empty();
-	}
-}
 
 export class SampleSettingTab extends PluginSettingTab {
 	plugin: MyPlugin;
 	private saveDebounceTimer: number | null = null;
 	private jsonTextArea: HTMLTextAreaElement | null = null;
+	private updateLoadBtnLabel: (() => void) | null = null;
 
 	constructor(app: App, plugin: MyPlugin) {
 		super(app, plugin);
@@ -76,6 +42,14 @@ export class SampleSettingTab extends PluginSettingTab {
 
 		containerEl.empty();
 
+		this.renderGeneralSettings(containerEl);
+		this.renderAliasSettings(containerEl);
+		this.renderImportExport(containerEl);
+
+		containerEl.scrollTop = scrollTop;
+	}
+
+	private renderGeneralSettings(containerEl: HTMLElement): void {
 		new Setting(containerEl)
 			.setName('Enabled')
 			.setDesc('Enable automatic scripture link conversion')
@@ -126,8 +100,6 @@ export class SampleSettingTab extends PluginSettingTab {
 					}),
 			);
 
-		let updateLoadBtnLabel: (() => void) | null = null;
-
 		new Setting(containerEl)
 			.setName('WT Locale')
 			.setDesc('Locale for jw.org links (e.g., J for Japanese)')
@@ -141,8 +113,8 @@ export class SampleSettingTab extends PluginSettingTab {
 							try {
 								this.plugin.settings.wtlocale = normalized;
 								await this.plugin.saveSettings();
-								if (updateLoadBtnLabel) {
-									updateLoadBtnLabel();
+								if (this.updateLoadBtnLabel) {
+									this.updateLoadBtnLabel();
 								}
 							} catch (error) {
 								this.plugin.settings.wtlocale = prev;
@@ -207,7 +179,9 @@ export class SampleSettingTab extends PluginSettingTab {
 						})();
 					}),
 			);
+	}
 
+	private renderAliasSettings(containerEl: HTMLElement): void {
 		containerEl.createEl('h3', { text: 'Book name aliases' });
 
 		// Preset Status Display under the Book name aliases header
@@ -262,10 +236,22 @@ export class SampleSettingTab extends PluginSettingTab {
 							new Notice('Alias already exists');
 							return;
 						}
-						this.plugin.settings.aliases[newAlias] = newBookNum;
-						this.plugin.settings.loadedPreset = null; // Set custom status
-						await this.plugin.saveSettings();
-						this.display();
+
+						const prevAliases = { ...this.plugin.settings.aliases };
+						const prevLoadedPreset = this.plugin.settings.loadedPreset;
+
+						try {
+							this.plugin.settings.aliases[newAlias] = newBookNum;
+							this.plugin.settings.loadedPreset = null; // Set custom status
+							await this.plugin.saveSettings();
+							this.display();
+						} catch (error) {
+							// Rollback
+							this.plugin.settings.aliases = prevAliases;
+							this.plugin.settings.loadedPreset = prevLoadedPreset;
+							console.error(error);
+							new Notice('Failed to save alias: ' + (error instanceof Error ? error.message : String(error)));
+						}
 					})();
 				}),
 		);
@@ -304,16 +290,28 @@ export class SampleSettingTab extends PluginSettingTab {
 					.setTooltip('Delete alias')
 					.onClick(() => {
 						void (async () => {
-							delete this.plugin.settings.aliases[alias];
-							this.plugin.settings.loadedPreset = null; // Set custom status
-							await this.plugin.saveSettings();
-							this.display();
+							const prevAliases = { ...this.plugin.settings.aliases };
+							const prevLoadedPreset = this.plugin.settings.loadedPreset;
+
+							try {
+								delete this.plugin.settings.aliases[alias];
+								this.plugin.settings.loadedPreset = null; // Set custom status
+								await this.plugin.saveSettings();
+								this.display();
+							} catch (error) {
+								// Rollback
+								this.plugin.settings.aliases = prevAliases;
+								this.plugin.settings.loadedPreset = prevLoadedPreset;
+								console.error(error);
+								new Notice('Failed to delete alias: ' + (error instanceof Error ? error.message : String(error)));
+							}
 						})();
 					}),
 			);
 		}
+	}
 
-		// JSON Import/Export
+	private renderImportExport(containerEl: HTMLElement): void {
 		containerEl.createEl('h3', { text: 'Import/export aliases' });
 		const jsonDesc = containerEl.createEl('p', {
 			text: 'Import or export your aliases as JSON. When importing, it will overwrite your current aliases.',
@@ -335,10 +333,13 @@ export class SampleSettingTab extends PluginSettingTab {
 		const importBtn = buttonContainer.createEl('button', { text: 'Import JSON' });
 		importBtn.addEventListener('click', () => {
 			void (async () => {
+				const prevAliases = { ...this.plugin.settings.aliases };
+				const prevLoadedPreset = this.plugin.settings.loadedPreset;
+
 				try {
 					const jsonValue = this.jsonTextArea?.value ?? '{}';
 					const imported = JSON.parse(jsonValue) as Record<string, unknown>;
-					if (typeof imported !== 'object' || imported === null) {
+					if (typeof imported !== 'object' || imported === null || Array.isArray(imported)) {
 						throw new Error('Invalid JSON format: must be an object');
 					}
 					// Basic validation
@@ -353,6 +354,9 @@ export class SampleSettingTab extends PluginSettingTab {
 					new Notice('Aliases imported successfully');
 					this.display();
 				} catch (e) {
+					// Rollback
+					this.plugin.settings.aliases = prevAliases;
+					this.plugin.settings.loadedPreset = prevLoadedPreset;
 					new Notice('Failed to import JSON: ' + (e instanceof Error ? e.message : String(e)));
 				}
 			})();
@@ -360,7 +364,7 @@ export class SampleSettingTab extends PluginSettingTab {
 
 		// Dynamic Button replacement for defaults reset
 		const loadBtn = buttonContainer.createEl('button');
-		updateLoadBtnLabel = () => {
+		this.updateLoadBtnLabel = () => {
 			const currentLocale = this.plugin.settings.wtlocale;
 			const preset = getPreset(currentLocale);
 			const label = preset
@@ -368,7 +372,7 @@ export class SampleSettingTab extends PluginSettingTab {
 				: 'Load aliases for current WT Locale';
 			loadBtn.setText(label);
 		};
-		updateLoadBtnLabel();
+		this.updateLoadBtnLabel();
 
 		loadBtn.addEventListener('click', () => {
 			void (async () => {
@@ -380,11 +384,22 @@ export class SampleSettingTab extends PluginSettingTab {
 				}
 
 				const loadPresetAction = async () => {
-					this.plugin.settings.aliases = JSON.parse(JSON.stringify(preset.aliases)) as Record<string, number>;
-					this.plugin.settings.loadedPreset = currentLocale;
-					await this.plugin.saveSettings();
-					new Notice(`Aliases loaded for ${preset.name}`);
-					this.display();
+					const prevAliases = { ...this.plugin.settings.aliases };
+					const prevLoadedPreset = this.plugin.settings.loadedPreset;
+
+					try {
+						this.plugin.settings.aliases = JSON.parse(JSON.stringify(preset.aliases)) as Record<string, number>;
+						this.plugin.settings.loadedPreset = currentLocale;
+						await this.plugin.saveSettings();
+						new Notice(`Aliases loaded for ${preset.name}`);
+						this.display();
+					} catch (error) {
+						// Rollback
+						this.plugin.settings.aliases = prevAliases;
+						this.plugin.settings.loadedPreset = prevLoadedPreset;
+						console.error(error);
+						new Notice('Failed to load preset: ' + (error instanceof Error ? error.message : String(error)));
+					}
 				};
 
 				if (this.plugin.settings.loadedPreset === currentLocale) {
@@ -401,7 +416,5 @@ export class SampleSettingTab extends PluginSettingTab {
 				}
 			})();
 		});
-
-		containerEl.scrollTop = scrollTop;
 	}
 }

@@ -8,15 +8,22 @@ import { getPreset } from './aliases-presets';
  */
 export function ensureDefaultAliases(settings: PluginSettings): boolean {
 	if (!settings.aliases || Object.keys(settings.aliases).length === 0) {
-		const preset = getPreset(settings.wtlocale) ?? getPreset('J');
-		if (!preset) {
-			// マスターデータが空。最低限フォールバック。
-			settings.aliases = {};
-			return false;
+		const preset = getPreset(settings.wtlocale);
+		if (preset) {
+			settings.aliases = { ...preset.aliases };
+			settings.loadedPreset = settings.wtlocale;
+			return true;
+		} else {
+			const fallbackPreset = getPreset('J');
+			if (!fallbackPreset) {
+				// マスターデータが空。最低限フォールバック。
+				settings.aliases = {};
+				return false;
+			}
+			settings.aliases = { ...fallbackPreset.aliases };
+			settings.loadedPreset = 'J';
+			return true;
 		}
-		settings.aliases = { ...preset.aliases };
-		settings.loadedPreset = settings.wtlocale;
-		return true;
 	}
 	return false;
 }
