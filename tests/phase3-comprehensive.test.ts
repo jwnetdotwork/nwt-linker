@@ -2,10 +2,10 @@ import { describe, it, expect, vi } from 'vitest';
 import { parseSingleReference } from '../src/core/parser';
 import { referenceToMarkdown } from '../src/core/converter';
 import { convertReferenceInCurrentLine } from '../src/core/editor-converter';
-import aliasesData from '../data/aliases.json';
+import { getPreset } from '../src/core/aliases-presets';
 import { DEFAULT_SETTINGS } from '../src/core/constants';
 
-const aliases = aliasesData.ja;
+const aliases = getPreset('J')?.aliases ?? {};
 
 describe('Phase 3 Requirements Verification', () => {
 

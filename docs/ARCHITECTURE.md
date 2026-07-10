@@ -19,7 +19,7 @@
 ```text
 .
 ├── data/
-│   ├── aliases.json
+│   ├── aliases-master.json
 │   └── verse-map.json
 ├── docs/
 │   ├── ARCHITECTURE.md
@@ -47,8 +47,8 @@
 - `src/settings.ts`
   - 設定型、デフォルト値、設定タブUI
   - 将来的に設定が増えても、まずここを起点に拡張する
-- `data/aliases.json`
-  - 書名エイリアスのデフォルトテーブル
+- `data/aliases-master.json`
+  - 複数言語の書名エイリアスを格納するマスターテーブル
 - `data/verse-map.json`
   - 章・節の検証に使う静的データ
 - `docs/spec.md`
@@ -78,6 +78,7 @@
 - `src/core/`
   - `normalize.ts`
   - `aliases.ts`
+  - `aliases-presets.ts` (プリセットデータ読み込み層)
   - `parser.ts`
   - `bible-id.ts`
   - `url-builder.ts`
@@ -96,6 +97,7 @@
 
 ## 4. Obsidian プラグインとしての実装原則
 
+- データ取得元を一元化する（マスターデータやプリセットを介して一貫したデータ提供を行う）
 - `src/main.ts` に業務ロジックを溜めない
 - コマンド ID は安定させ、後から変更しない
 - `this.register*` 系を使ってイベントや interval を必ず解放する

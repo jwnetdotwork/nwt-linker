@@ -53,7 +53,7 @@ From **Book name aliases** in the settings, you can:
 - Change the associated book number for an existing alias
 - Delete aliases
 - Import or export aliases as JSON
-- Reset to the default Japanese aliases
+- **Load aliases for current WT Locale**: Load presets matching your current WT Locale setting (e.g. `J — 日本語`). If you modify any aliases manually, the loaded state resets to custom, and you will be prompted with a confirmation dialog to reload.
 
 ## Settings
 
@@ -82,6 +82,7 @@ The default values should work fine for Japanese usage.
 
 ## Notes
 
+- Supported Locales at Phase 2 release: J (Japanese) only.
 - This is an Obsidian community plugin.
 - It works offline by default.
 - It follows jw.org usage rules and does not scrape content.

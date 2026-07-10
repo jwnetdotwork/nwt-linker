@@ -104,6 +104,7 @@ export default class MyPlugin extends Plugin {
 			DEFAULT_SETTINGS,
 			(await this.loadData()) as Partial<MyPluginSettings>,
 		);
+		this.settings.loadedPreset = this.settings.loadedPreset ?? null;
 
 		if (ensureDefaultAliases(this.settings)) {
 			await this.saveSettings();

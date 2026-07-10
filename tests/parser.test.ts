@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { parseSingleReference } from '../src/core/parser';
-import aliasesData from '../data/aliases.json';
+import { getPreset } from '../src/core/aliases-presets';
 import verseMapData from '../data/verse-map.json';
 
-const aliases = aliasesData.ja;
+const aliases = getPreset('J')?.aliases ?? {};
 const verseMap = verseMapData as Record<string, Record<string, number>>;
 
 describe('parseSingleReference', () => {

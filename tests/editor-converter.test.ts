@@ -1,7 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import { convertReferenceInCurrentLine } from '../src/core/editor-converter';
 import { DEFAULT_SETTINGS } from '../src/core/constants';
-import aliasesData from '../data/aliases.json';
+import { getPreset } from '../src/core/aliases-presets';
+
+const aliases = getPreset('J')?.aliases ?? {};
 
 describe('convertReferenceInCurrentLine', () => {
 	it('creates a transaction with Obsidian selection coordinates', () => {
@@ -15,7 +17,7 @@ describe('convertReferenceInCurrentLine', () => {
 			setCursor: vi.fn(),
 		} as any;
 
-		convertReferenceInCurrentLine(editor, aliasesData.ja, DEFAULT_SETTINGS);
+		convertReferenceInCurrentLine(editor, aliases, DEFAULT_SETTINGS);
 
 		expect(transaction).toHaveBeenCalledTimes(1);
 		const tx = transaction.mock.calls[0][0];
