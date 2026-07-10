@@ -10,7 +10,9 @@ Type a Bible book name and chapter/verse reference in a note, and the plugin con
 - Generates jw.org links for the New World Translation
 - Opens JW Library when it is available, otherwise falls back to jw.org
 - Supports configurable book name aliases
+- Loads book name aliases from WT Locale presets
 - Add, edit, delete, import, and export aliases as JSON
+- Tracks whether aliases are loaded from a preset or custom-edited
 - Lets you configure locale, publication, and the URL template
 - Uses a short delay after typing stops, so it stays out of the way while you edit
 
@@ -36,14 +38,14 @@ Titus 1:14
 
 ## Book name aliases
 
-You can define aliases for each Bible book.
+You can define aliases for each Bible book. Aliases are loaded from locale presets based on your **WT Locale** setting.
 
-For example, you can register alternate names such as:
+For example, the Japanese (`J`) preset includes aliases such as:
 
-- `Titus`
-- `Tit`
-- `John`
-- `Jn`
+- `創世記`, `創` → Genesis
+- `詩編`, `詩` → Psalms
+- `テトス`, `テト` → Titus
+- `ヨハネ`, `ヨハ` → John
 
 This lets you convert references using the shorthand you already prefer.
 
@@ -53,7 +55,17 @@ From **Book name aliases** in the settings, you can:
 - Change the associated book number for an existing alias
 - Delete aliases
 - Import or export aliases as JSON
-- **Load aliases for current WT Locale**: Load presets matching your current WT Locale setting (e.g. `J — 日本語`). If you modify any aliases manually, the loaded state resets to custom, and you will be prompted with a confirmation dialog to reload.
+- **Load aliases for current WT Locale**: Replace the current aliases with the preset that matches your WT Locale setting (e.g. `J — 日本語`).
+
+### Custom aliases and reloading presets
+
+When you add, edit, delete, or import aliases, the alias list switches to **custom** state. The settings screen shows whether the current list is loaded from a preset or custom-edited.
+
+If you are in custom state and choose **Load aliases for current WT Locale**, a confirmation dialog appears so you do not accidentally overwrite your custom aliases. If the preset for the current locale is already loaded, it reloads immediately.
+
+### Requesting a new locale preset
+
+If you need support for a WT locale that is not yet included, please open an issue or pull request on [GitHub](https://github.com/jwnetdotwork/nwt-linker).
 
 ## Settings
 
@@ -82,7 +94,19 @@ The default values should work fine for Japanese usage.
 
 ## Notes
 
-- Supported Locales at Phase 2 release: J (Japanese) only.
+- Supported WT Locale presets:
+  - Japanese (`J`)
+  - English (`E`)
+  - Spanish (`S`)
+  - Chinese Mandarin Traditional (`CH`)
+  - Chinese Mandarin Simplified (`CHS`)
+  - Portuguese Brazil (`T`)
+  - French (`F`)
+  - German (`X`)
+  - Korean (`KO`)
+  - Italian (`I`)
+  - Russian (`U`)
+- If no preset exists for the configured WT Locale, the plugin falls back to the Japanese (`J`) preset on first setup.
 - This is an Obsidian community plugin.
 - It works offline by default.
 - It follows jw.org usage rules and does not scrape content.
