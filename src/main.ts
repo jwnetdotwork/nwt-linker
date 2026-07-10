@@ -11,6 +11,7 @@ import {
 } from './settings';
 import { convertReferenceInCurrentLine } from './core/editor-converter';
 import { ensureDefaultAliases } from './core/settings-utils';
+import { detectWTLocale } from './core/locale-detect';
 
 export default class MyPlugin extends Plugin {
 	settings!: MyPluginSettings;
@@ -99,12 +100,19 @@ export default class MyPlugin extends Plugin {
 	}
 
 	async loadSettings() {
+		const savedData = await this.loadData();
+		const isFirstLaunch = savedData === null || savedData === undefined;
+
 		this.settings = Object.assign(
 			{},
 			DEFAULT_SETTINGS,
-			(await this.loadData()) as Partial<MyPluginSettings>,
+			savedData as Partial<MyPluginSettings>,
 		);
 		this.settings.loadedPreset = this.settings.loadedPreset ?? null;
+
+		if (isFirstLaunch) {
+			this.settings.wtlocale = detectWTLocale(this.app);
+		}
 
 		if (ensureDefaultAliases(this.settings)) {
 			await this.saveSettings();
