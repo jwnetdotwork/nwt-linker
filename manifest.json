@@ -3,7 +3,7 @@
 	"name": "NWT Linker",
 	"version": "1.0.0",
 	"minAppVersion": "1.1.0",
-	"description": "Links NWT Scripture references to jw.org.",
+	"description": "Links NWT Scripture references to jw.org/JW Library.",
 	"author": "JW Network",
 	"isDesktopOnly": false
 }
