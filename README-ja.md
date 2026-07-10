@@ -111,3 +111,6 @@ custom 状態で **Load aliases for current WT Locale** を選択すると、カ
 - 既定ではオフラインで動作します。
 - jw.org の利用規約に準拠しています。スクレイピングは行っていません。
 - 聖句リンクの変換は、あなたのノート内で完結します。
+- WT Localeの調べ方
+  - ご自分の言語でシェアリンクを作成して`wtlocale=大文字アルファベット`の部分を探してください。その大文字アルファベットがWT Localeです。
+  - 例) `https://www.jw.org/finder?srcid=jwlshare&wtlocale=E&prefer=lang&bible=40024045&pub=nwtsty` というシェアリンクであれば、WT Localeは`E`です。

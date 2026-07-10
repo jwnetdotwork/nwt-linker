@@ -111,3 +111,6 @@ The default values should work fine for Japanese usage.
 - It works offline by default.
 - It follows jw.org usage rules and does not scrape content.
 - Reference conversion happens entirely inside your notes.
+- How to find your WT Locale
+  - Create a share link in your language and look for the `wtlocale=` parameter. The uppercase letters after it are your WT Locale.
+  - Example: In `https://www.jw.org/finder?srcid=jwlshare&wtlocale=E&prefer=lang&bible=40024045&pub=nwtsty`, the WT Locale is `E`.
