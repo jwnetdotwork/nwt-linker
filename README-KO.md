@@ -87,7 +87,7 @@ custom 상태에서 **Load aliases for current WT Locale**을 선택하면 사�
 2. 해당 두 파일을 Vault의 다음 폴더에 넣습니다.
 
 ```text
-<Vault>/.obsidian/plugins/obsidian-nwt-linker/
+<Vault>/.obsidian/plugins/nwt-linker/
 ```
 
 3. Obsidian을 다시 불러오고, **설정 → 커뮤니티 플러그인**에서 NWT Linker를 활성화합니다.

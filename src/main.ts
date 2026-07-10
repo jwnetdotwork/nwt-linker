@@ -6,15 +6,15 @@ import {
 } from 'obsidian';
 import {
 	DEFAULT_SETTINGS,
-	MyPluginSettings,
-	SampleSettingTab,
+	NWTLinkerSettings,
+	NWTLinkerSettingTab,
 } from './settings';
 import { convertReferenceInCurrentLine } from './core/editor-converter';
 import { ensureDefaultAliases } from './core/settings-utils';
 import { detectWTLocale } from './core/locale-detect';
 
-export default class MyPlugin extends Plugin {
-	settings!: MyPluginSettings;
+export default class NWTLinkerPlugin extends Plugin {
+	settings!: NWTLinkerSettings;
 	private debounceTimer: number | null = null;
 	private isComposing = false;
 	private composingEditor: Editor | null = null;
@@ -23,7 +23,7 @@ export default class MyPlugin extends Plugin {
 	async onload() {
 		await this.loadSettings();
 
-		this.addSettingTab(new SampleSettingTab(this.app, this));
+		this.addSettingTab(new NWTLinkerSettingTab(this.app, this));
 
 		this.registerEvent(
 			this.app.workspace.on('editor-change', (editor: Editor, info: MarkdownView | MarkdownFileInfo) => {
@@ -100,13 +100,13 @@ export default class MyPlugin extends Plugin {
 	}
 
 	async loadSettings() {
-		const savedData = await this.loadData();
+		const savedData = await this.loadData() as Partial<NWTLinkerSettings> | null | undefined;
 		const isFirstLaunch = savedData === null || savedData === undefined;
 
 		this.settings = Object.assign(
 			{},
 			DEFAULT_SETTINGS,
-			savedData as Partial<MyPluginSettings>,
+			savedData as Partial<NWTLinkerSettings>,
 		);
 		this.settings.loadedPreset = this.settings.loadedPreset ?? null;
 

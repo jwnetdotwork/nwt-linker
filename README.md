@@ -81,16 +81,27 @@ The default values should work fine for Japanese usage.
 
 ## Installation
 
+### From Community Plugins
+
+1. In Obsidian, open **Settings → Community plugins**.
+2. Turn on **Community plugins** if you haven't already.
+3. Search for **NWT Linker**.
+4. Select **Install**, then **Enable**.
+
 ### Manual installation
 
 1. Open the GitHub [Releases page](https://github.com/jwnetdotwork/nwt-linker/releases) and download `main.js` and `manifest.json` from the latest release.
 2. Place those two files in the following folder in your vault:
 
 ```text
-<Vault>/.obsidian/plugins/obsidian-nwt-linker/
+<Vault>/.obsidian/plugins/nwt-linker/
 ```
 
 3. Reload Obsidian and enable NWT Linker from **Settings → Community plugins**.
+
+## Network disclosure
+
+This plugin does not make any network requests. All scripture reference conversion happens locally inside your notes. Clicking a generated link opens jw.org in your default browser, which is a network action initiated by you, not the plugin.
 
 ## Notes
 

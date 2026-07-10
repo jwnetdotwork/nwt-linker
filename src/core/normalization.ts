@@ -8,5 +8,5 @@ export function normalizeText(text: string): string {
 		.replace(/，/g, ',')
 		.replace(/；/g, ';')
 		.replace(/[−–—ー]/g, '-')
-		.replace(/　/g, ' '); // Full-width space to half-width space
+		.replace(/\u3000/g, ' '); // Full-width space to half-width space
 }

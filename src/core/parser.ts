@@ -24,7 +24,6 @@ export function parseSingleReference(
 	const firstPartMatch = normalizedAfterBook.match(/^(\s*)(\d+):(\d+)/);
 	if (!firstPartMatch) return null;
 
-	const leadingSpace = firstPartMatch[1] ?? '';
 	const chapterStr = firstPartMatch[2];
 	const firstVerseStr = firstPartMatch[3];
 	if (chapterStr === undefined || firstVerseStr === undefined) return null;
@@ -150,7 +149,7 @@ export function parseSingleReference(
 	// VerseMap validation (Phase 4 requirement)
 	if (verseMap) {
 		const bookNumStr = bookMatch.bookNumber.toString();
-		const chapters = (verseMap as Record<string, Record<string, number>>)[bookNumStr];
+		const chapters = verseMap[bookNumStr];
 		if (!chapters) return null;
 
 		const maxVerse = chapters[chapter.toString()];

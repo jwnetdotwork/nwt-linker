@@ -6,3 +6,4 @@ mkdir -p "$TARGET_DIR"
 # Copy the necessary files to the target directory
 cp main.js "$TARGET_DIR"
 cp manifest.json "$TARGET_DIR"
+cp styles.css "$TARGET_DIR"

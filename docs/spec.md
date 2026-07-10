@@ -4,7 +4,7 @@
 
 ### 1.0 プラグイン名など
 プラグイン名: nwt-linker
-プラグインID: obsidian-nwt-linker
+プラグインID: nwt-linker
 
 ### 1.1 プラグインの目的
 

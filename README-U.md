@@ -87,7 +87,7 @@ NWT Linker — это плагин сообщества для Obsidian, кот�
 2. Поместите эти два файла в следующую папку вашего vault:
 
 ```text
-<Vault>/.obsidian/plugins/obsidian-nwt-linker/
+<Vault>/.obsidian/plugins/nwt-linker/
 ```
 
 3. Перезагрузите Obsidian и включите NWT Linker в **Настройки → Сторонние плагины**.

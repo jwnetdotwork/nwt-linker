@@ -99,19 +99,24 @@ export function detectWTLocale(app: App): string {
 			const wt = mapLocaleToWTLocale(momentLocale);
 			if (wt) return wt;
 		}
-	} catch (e) {
-		console.warn('Failed to detect locale from moment.locale():', e);
+	} catch {
+		// Ignore detection failure and fall through.
 	}
 
 	// Strategy 2: app.vault.getConfig('language')
+	interface VaultWithConfig {
+		getConfig(key: string): unknown;
+	}
+
 	try {
-		const obsidianLang = (app.vault as any).getConfig('language');
+		const vault = app.vault as unknown as VaultWithConfig;
+		const obsidianLang = vault.getConfig('language');
 		if (obsidianLang && typeof obsidianLang === 'string') {
 			const wt = mapLocaleToWTLocale(obsidianLang);
 			if (wt) return wt;
 		}
-	} catch (e) {
-		console.warn('Failed to detect locale from app.vault.getConfig("language"):', e);
+	} catch {
+		// Ignore detection failure and fall through.
 	}
 
 	// Strategy 3: navigator.language
@@ -121,8 +126,8 @@ export function detectWTLocale(app: App): string {
 			const wt = mapLocaleToWTLocale(navLang);
 			if (wt) return wt;
 		}
-	} catch (e) {
-		console.warn('Failed to detect locale from navigator.language:', e);
+	} catch {
+		// Ignore detection failure and fall through.
 	}
 
 	// Fallback to J

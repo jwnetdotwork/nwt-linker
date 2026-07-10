@@ -87,7 +87,7 @@ NWT Linker 是一款 Obsidian 社群插件，可將聖經經文參考轉換為�
 2. 將這兩個檔案放到你的 Vault 中的以下資料夾：
 
 ```text
-<Vault>/.obsidian/plugins/obsidian-nwt-linker/
+<Vault>/.obsidian/plugins/nwt-linker/
 ```
 
 3. 重新載入 Obsidian，並在**設定 → 社群插件**中啟用 NWT Linker。

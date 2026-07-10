@@ -1,20 +1,20 @@
 import { App, Notice, PluginSettingTab, Setting } from 'obsidian';
-import MyPlugin from './main';
+import NWTLinkerPlugin from './main';
 import { PluginSettings } from './core/types';
 import { DEFAULT_SETTINGS } from './core/constants';
 import { getPreset } from './core/aliases-presets';
 import { ConfirmModal } from './ui/confirm-modal';
 
 export { DEFAULT_SETTINGS };
-export type MyPluginSettings = PluginSettings;
+export type NWTLinkerSettings = PluginSettings;
 
-export class SampleSettingTab extends PluginSettingTab {
-	plugin: MyPlugin;
+export class NWTLinkerSettingTab extends PluginSettingTab {
+	plugin: NWTLinkerPlugin;
 	private saveDebounceTimer: number | null = null;
 	private jsonTextArea: HTMLTextAreaElement | null = null;
 	private updateLoadBtnLabel: (() => void) | null = null;
 
-	constructor(app: App, plugin: MyPlugin) {
+	constructor(app: App, plugin: NWTLinkerPlugin) {
 		super(app, plugin);
 		this.plugin = plugin;
 	}
@@ -25,14 +25,16 @@ export class SampleSettingTab extends PluginSettingTab {
 		}
 	}
 
-	private async debouncedSave() {
+	private debouncedSave() {
 		if (this.saveDebounceTimer !== null) {
 			window.clearTimeout(this.saveDebounceTimer);
 		}
-		this.saveDebounceTimer = window.setTimeout(async () => {
-			this.saveDebounceTimer = null;
-			await this.plugin.saveSettings();
-			this.updateJsonTextarea();
+		this.saveDebounceTimer = window.setTimeout(() => {
+			void (async () => {
+				this.saveDebounceTimer = null;
+				await this.plugin.saveSettings();
+				this.updateJsonTextarea();
+			})();
 		}, 500);
 	}
 
@@ -41,6 +43,7 @@ export class SampleSettingTab extends PluginSettingTab {
 		const scrollTop = containerEl.scrollTop;
 
 		containerEl.empty();
+		containerEl.addClass('nwt-linker-setting-tab');
 
 		this.renderGeneralSettings(containerEl);
 		this.renderAliasSettings(containerEl);
@@ -101,7 +104,8 @@ export class SampleSettingTab extends PluginSettingTab {
 			);
 
 		new Setting(containerEl)
-			.setName('WT Locale')
+			// eslint-disable-next-line obsidianmd/ui/sentence-case
+			.setName('WT locale')
 			.setDesc('Locale for jw.org links (e.g., J for Japanese)')
 			.addText((text) =>
 				text
@@ -149,7 +153,7 @@ export class SampleSettingTab extends PluginSettingTab {
 			);
 
 		new Setting(containerEl)
-			.setName('URL Template')
+			.setName('URL template')
 			.setDesc('Template for jw.org links. Must contain {{bible}}.')
 			.addText((text) =>
 				text
@@ -182,7 +186,9 @@ export class SampleSettingTab extends PluginSettingTab {
 	}
 
 	private renderAliasSettings(containerEl: HTMLElement): void {
-		containerEl.createEl('h3', { text: 'Book name aliases' });
+		new Setting(containerEl)
+			.setName('Book name aliases')
+			.setHeading();
 
 		// Preset Status Display under the Book name aliases header
 		const statusEl = containerEl.createEl('p');
@@ -258,7 +264,6 @@ export class SampleSettingTab extends PluginSettingTab {
 
 		// Alias list
 		const aliasListContainer = containerEl.createDiv('alias-list-container');
-		aliasListContainer.style.marginTop = '20px';
 
 		const aliases = Object.entries(this.plugin.settings.aliases).sort((a, b) => a[1] - b[1] || a[0].localeCompare(b[0]));
 
@@ -279,9 +284,9 @@ export class SampleSettingTab extends PluginSettingTab {
 							// Update status text in real time
 							updateStatusText();
 						}
-					});
-				text.inputEl.style.width = '60px';
-			});
+				});
+			text.inputEl.addClass('alias-book-number-input');
+		});
 
 			s.addButton((btn) =>
 				btn
@@ -312,7 +317,9 @@ export class SampleSettingTab extends PluginSettingTab {
 	}
 
 	private renderImportExport(containerEl: HTMLElement): void {
-		containerEl.createEl('h3', { text: 'Import/export aliases' });
+		new Setting(containerEl)
+			.setName('Import/export aliases')
+			.setHeading();
 		const jsonDesc = containerEl.createEl('p', {
 			text: 'Import or export your aliases as JSON. When importing, it will overwrite your current aliases.',
 		});
@@ -321,14 +328,9 @@ export class SampleSettingTab extends PluginSettingTab {
 		this.jsonTextArea = containerEl.createEl('textarea', {
 			cls: 'alias-json-textarea',
 		});
-		this.jsonTextArea.style.width = '100%';
-		this.jsonTextArea.style.height = '150px';
 		this.jsonTextArea.value = JSON.stringify(this.plugin.settings.aliases, null, 2);
 
-		const buttonContainer = containerEl.createDiv();
-		buttonContainer.style.display = 'flex';
-		buttonContainer.style.gap = '10px';
-		buttonContainer.style.marginTop = '10px';
+		const buttonContainer = containerEl.createDiv('alias-button-container');
 
 		const importBtn = buttonContainer.createEl('button', { text: 'Import JSON' });
 		importBtn.addEventListener('click', () => {

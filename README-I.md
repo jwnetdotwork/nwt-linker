@@ -87,7 +87,7 @@ Se utilizzi un WT Locale diverso, modifica l'impostazione del locale in modo che
 2. Posiziona questi due file nella seguente cartella del tuo vault:
 
 ```text
-<Vault>/.obsidian/plugins/obsidian-nwt-linker/
+<Vault>/.obsidian/plugins/nwt-linker/
 ```
 
 3. Ricarica Obsidian e abilita NWT Linker da **Impostazioni → Plugin della community**.
